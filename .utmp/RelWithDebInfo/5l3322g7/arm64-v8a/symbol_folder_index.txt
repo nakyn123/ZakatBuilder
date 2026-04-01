@@ -1,0 +1,1 @@
+C:\Users\Nakyn Nattawin\ZakatBuilder\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\build\intermediates\cxx\RelWithDebInfo\5l3322g7\obj\arm64-v8a

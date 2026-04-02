@@ -63,6 +63,7 @@ MonoBehaviour:
   - {fileID: 6448214056791194966}
   woodParticlePrefab: {fileID: 178624004506477565, guid: 7cd76280bb6fc2e4d86ee3fdf558b45d, type: 3}
   coinModelPrefab: {fileID: 1119527442689288974, guid: 86d358913251adc49819451f557aea80, type: 3}
+  respawnTime: 5
 --- !u!135 &7682349010659735505
 SphereCollider:
   m_ObjectHideFlags: 0

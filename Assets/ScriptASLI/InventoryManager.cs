@@ -5,18 +5,34 @@ using UnityEngine.UI;
 public class InventoryManager : MonoBehaviour {
     public static InventoryManager instance;
 
-    [Header("Settings")]
-    public int woodCount = 0;
-    public int woodPrice = 50;
+    [Header("Settings - Wood Counts")]
+    public int woodKecilCount = 0;
+    public int woodSedangCount = 0;
+    public int woodBesarCount = 0;
+
+    [Header("Settings - Prices")]
+    public int priceKecil = 500000;  // Tulis 500000 di Inspector
+    public int priceSedang = 1500000;
+    public int priceBesar = 3000000;
 
     [Header("UI Elements")]
     public GameObject inventoryPanel;
-    public TextMeshProUGUI woodCountText;
+    public TextMeshProUGUI woodKecilText;
+    public TextMeshProUGUI woodSedangText;
+    public TextMeshProUGUI woodBesarText;
     
     [Header("Coin Effect Settings")]
-    public GameObject uiCoinPrefab; // Prefab Image Koin
-    public RectTransform navCoinTarget; // Target posisi nav_coin (RectTransform)
-    public Transform sellButtonTransform; // Posisi tombol jual buat titik awal koin
+    public GameObject uiCoinPrefab; 
+    public RectTransform navCoinTarget; 
+
+    // --- PERBAIKAN: Pisahkan Transform untuk tiap tombol ---
+    [Header("Sell Button Positions")]
+    public Transform btnJualKecilPos; 
+    public Transform btnJualSedangPos; 
+    public Transform btnJualBesarPos; 
+
+    [Header("Misi Progress - Tetap Bertambah Walau Dijual")]
+    public int totalWoodCollected = 0; // Tambahkan ini
 
     void Awake() { instance = this; }
 
@@ -25,56 +41,68 @@ public class InventoryManager : MonoBehaviour {
         UpdateUI();
     }
 
-    public void AddWood(int amount) {
-        woodCount += amount;
+    public void AddWood(int amount, int type) {
+        if (type == 0) woodKecilCount += amount;
+        else if (type == 1) woodSedangCount += amount;
+        else if (type == 2) woodBesarCount += amount;
+
+        totalWoodCollected += amount;
         UpdateUI();
 
-        // --- TAMBAHKAN INI ---
         if (TaskManager.instance != null) {
-            TaskManager.instance.UpdateTaskUI(woodCount);
+            TaskManager.instance.UpdateTaskUI(totalWoodCollected);
         }
     }
 
     public void UpdateUI() {
-        // Sekarang formatnya "1x"
-        if(woodCountText != null)
-            woodCountText.text = woodCount.ToString() + "x";
+        if(woodKecilText != null) woodKecilText.text = woodKecilCount.ToString() + "x";
+        if(woodSedangText != null) woodSedangText.text = woodSedangCount.ToString() + "x";
+        if(woodBesarText != null) woodBesarText.text = woodBesarCount.ToString() + "x";
     }
 
     public void ToggleInventory() {
         if (inventoryPanel != null) inventoryPanel.SetActive(!inventoryPanel.activeSelf);
     }
 
-    // FUNGSI BARU: Jual Satu Per Satu
-    public void JualSatuKayu() {
-        if (woodCount > 0) {
-            woodCount--;
+    // --- PERBAIKAN: Fungsi jual sekarang mengirim posisi tombolnya ---
+    public void JualKayuKecil() {
+        if (woodKecilCount > 0) {
+            woodKecilCount--;
             UpdateUI();
-            
-            // Munculkan koin terbang
-            SpawnUICoin();
+            SpawnUICoin(priceKecil, btnJualKecilPos);
         }
     }
 
-    void SpawnUICoin() {
-        if (uiCoinPrefab == null || navCoinTarget == null) return;
+    public void JualKayuSedang() {
+        if (woodSedangCount > 0) {
+            woodSedangCount--;
+            UpdateUI();
+            SpawnUICoin(priceSedang, btnJualSedangPos);
+        }
+    }
 
-        int jumlahKoin = 5; 
+    public void JualKayuBesar() {
+        if (woodBesarCount > 0) {
+            woodBesarCount--;
+            UpdateUI();
+            SpawnUICoin(priceBesar, btnJualBesarPos);
+        }
+    }
+
+    // Fungsi Spawn sekarang menerima parameter posisi
+    void SpawnUICoin(int harga, Transform spawnPos) {
+        if (uiCoinPrefab == null || navCoinTarget == null || spawnPos == null) return;
         
+        int jumlahKoin = 5; 
         for (int i = 0; i < jumlahKoin; i++) {
-            // Spawn koin sebagai anak dari Root Canvas (transform.parent-nya panel)
-            // Agar koin tidak tertutup panel, kita set sebagai 'Last Sibling' nanti
             GameObject coin = Instantiate(uiCoinPrefab, inventoryPanel.transform.parent);
-            
-            // Memastikan koin muncul paling depan di hierarchy UI
             coin.transform.SetAsLastSibling();
             
-            // PENTING: Set posisi tepat di tombol jual
-            coin.transform.position = sellButtonTransform.position;
-
-            UICoinEffect effect = coin.AddComponent<UICoinEffect>();
+            // Koin muncul di posisi tombol yang diklik
+            coin.transform.position = spawnPos.position; 
             
-            int nilaiPerKoin = (i == 0) ? woodPrice : 0; 
+            UICoinEffect effect = coin.AddComponent<UICoinEffect>();
+            int nilaiPerKoin = (i == 0) ? harga : 0; 
             effect.Init(navCoinTarget, nilaiPerKoin);
         }
     }

@@ -108,7 +108,9 @@ public class TaskManager : MonoBehaviour {
     public void OpenMisi() {
         misiPanel.SetActive(true);
         if (InventoryManager.instance != null) {
-            UpdateTaskUI(InventoryManager.instance.woodCount);
+            // Ambil total semua jenis kayu untuk menghitung progres misi
+            int progressMisi = InventoryManager.instance.totalWoodCollected;
+            UpdateTaskUI(progressMisi);
         }
     }
 

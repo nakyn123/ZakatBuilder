@@ -5,46 +5,51 @@ using System.Collections;
 
 public class JurnalManager : MonoBehaviour
 {
+    public static JurnalManager instance;
+
     [Header("UI Panels & General Buttons")]
     public GameObject jurnalContent;
     public GameObject asetBlur;
+    public GameObject ikonNotifikasiJurnal;
     public Button btnClose;
     public Button btnNext;
     public Button btnPrevious;
 
     [Header("Halaman 1: Zakat Perdagangan")]
-    public GameObject groupZakatPerdagangan; // Tarik objek 'zakat perdagangan' ke sini
+    public GameObject groupZakatPerdagangan; 
     public GameObject checkNisab;
     public GameObject checkHaul;
+    public GameObject checkZakatDagang;
     public TextMeshProUGUI txtHartamu;
     public TextMeshProUGUI txtStatus;
     public GameObject messageText;
     public Slider haulSlider;
 
     [Header("Halaman 2: Zakat Pertanian")]
-    public GameObject groupZakatPertanian; // Tarik objek 'zakat pertanian' ke sini
+    public GameObject groupZakatPertanian;
 
     [Header("Settings")]
     public float nisabLimit = 85000000f; 
-    public float timerPerMonth = 120f; 
+    public float timerPerMonth = 10f; // 10 detik per bulan sesuai keinginanmu
 
     private int currentHaulMonth = 0;
-    private float timerCounter = 0;
     private bool isNisabReached = false;
     private bool isHaulComplete = false;
+    private bool isNotificationShown = false;
+
+    void Awake() { instance = this; }
 
     void Start()
     {
-        // Setup Awal
         jurnalContent.SetActive(false);
         asetBlur.SetActive(false);
-        
-        // Mulai di Halaman 1
+        if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(false);
         ShowPage(1);
         
-        // Logika Zakat Awal
         checkNisab.SetActive(false);
         checkHaul.SetActive(false);
+        if(checkZakatDagang != null) checkZakatDagang.SetActive(false);
+        
         haulSlider.minValue = 0;
         haulSlider.maxValue = 12;
         haulSlider.value = 0;
@@ -52,7 +57,6 @@ public class JurnalManager : MonoBehaviour
         
         UpdateStatusUI();
 
-        // Button Events
         btnClose.onClick.AddListener(CloseJurnal);
         btnNext.onClick.AddListener(() => ShowPage(2));
         btnPrevious.onClick.AddListener(() => ShowPage(1));
@@ -60,55 +64,73 @@ public class JurnalManager : MonoBehaviour
 
     void Update()
     {
-        // --- LOGIKA ZAKAT PERDAGANGAN ---
         if (MoneyManager.instance != null)
         {
             float currentMoney = MoneyManager.instance.totalMoney;
-            txtHartamu.text = "Hartamu : Rp " + currentMoney.ToString("N0", new System.Globalization.CultureInfo("id-ID"));
+            
+            // Update teks tampilan harta di jurnal
+            txtHartamu.text = "Rp " + currentMoney.ToString("N0", new System.Globalization.CultureInfo("id-ID"));
 
+            // LOGIKA BARU: Jika uang >= 85jt DAN belum pernah terpicu sebelumnya
             if (currentMoney >= nisabLimit && !isNisabReached)
             {
-                isNisabReached = true;
-                checkNisab.SetActive(true);
+                StartZakatLogic();
             }
         }
-
-        if (isNisabReached && !isHaulComplete)
-        {
-            timerCounter += Time.deltaTime;
-            if (timerCounter >= timerPerMonth)
-            {
-                timerCounter = 0;
-                currentHaulMonth++;
-                haulSlider.value = currentHaulMonth;
-
-                if (currentHaulMonth >= 12)
-                {
-                    isHaulComplete = true;
-                    checkHaul.SetActive(true);
-                }
-            }
-        }
-        UpdateStatusUI();
     }
 
-    // FUNGSI PINDAH HALAMAN
+    public void StartZakatLogic() {
+        // Tambahkan pengecekan agar tidak jalan berulang kali jika sudah aktif
+        if (isNisabReached) return;
+
+        isNisabReached = true;
+
+        // Hidupkan centang
+        if (checkNisab != null) checkNisab.SetActive(true);
+        if (checkZakatDagang != null) checkZakatDagang.SetActive(true);
+        
+        // Mulai slider Haul
+        StopAllCoroutines(); 
+        StartCoroutine(HaulTimerRoutine());
+    }
+
+    IEnumerator HaulTimerRoutine() {
+        currentHaulMonth = 0;
+        isHaulComplete = false;
+
+        while (currentHaulMonth < 12) {
+            float timer = 0;
+            while (timer < timerPerMonth) { 
+                timer += Time.deltaTime;
+                if (haulSlider != null) {
+                    // Slider bergerak smooth mengikuti detik
+                    haulSlider.value = currentHaulMonth + (timer / timerPerMonth);
+                }
+                yield return null;
+            }
+            currentHaulMonth++;
+            haulSlider.value = currentHaulMonth; // Pastikan pas di angka bulat setiap bulan
+        }
+
+        isHaulComplete = true;
+        if (checkHaul != null) checkHaul.SetActive(true);
+        UpdateStatusUI(); 
+    }
+
     void ShowPage(int pageNumber)
     {
         if (pageNumber == 1)
         {
             groupZakatPerdagangan.SetActive(true);
             groupZakatPertanian.SetActive(false);
-            
             btnNext.gameObject.SetActive(true);
             btnPrevious.gameObject.SetActive(false);
         }
-        else if (pageNumber == 2)
+        else
         {
             groupZakatPerdagangan.SetActive(false);
             groupZakatPertanian.SetActive(true);
-            
-            btnNext.gameObject.SetActive(false); // Sembunyikan btn_next di hal terakhir
+            btnNext.gameObject.SetActive(false);
             btnPrevious.gameObject.SetActive(true);
         }
     }
@@ -120,32 +142,26 @@ public class JurnalManager : MonoBehaviour
             txtStatus.text = "Wajib Zakat";
             txtStatus.color = Color.black;
             messageText.SetActive(true);
+            if (!isNotificationShown && !jurnalContent.activeSelf) {
+                if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(true);
+                isNotificationShown = true; // Tandai agar tidak muncul berulang kali
+            }
         }
         else
         {
             txtStatus.text = "Belum Wajib Zakat";
-            txtStatus.color = HexToColor("#5A5353");
+            txtStatus.color = Color.gray; 
             messageText.SetActive(false);
         }
     }
 
-    public void OpenJurnal()
-    {
-        jurnalContent.SetActive(true);
-        asetBlur.SetActive(true);
-        ShowPage(1); // Reset ke halaman 1 setiap buka jurnal
+    public void OpenJurnal() { 
+        jurnalContent.SetActive(true); 
+        asetBlur.SetActive(true); 
+
+        // 4. SAAT JURNAL DIBUKA: Matikan ikon notifikasi (tanda sudah dibaca)
+        if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(false);
     }
 
-    public void CloseJurnal()
-    {
-        jurnalContent.SetActive(false);
-        asetBlur.SetActive(false);
-    }
-
-    Color HexToColor(string hex)
-    {
-        Color color = Color.gray;
-        ColorUtility.TryParseHtmlString(hex, out color);
-        return color;
-    }
+    public void CloseJurnal() { jurnalContent.SetActive(false); asetBlur.SetActive(false); }
 }

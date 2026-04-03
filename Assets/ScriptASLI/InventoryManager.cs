@@ -49,8 +49,9 @@ public class InventoryManager : MonoBehaviour {
         totalWoodCollected += amount;
         UpdateUI();
 
+        // PERBAIKAN: Ganti UpdateTaskUI menjadi UpdateTebangProgress
         if (TaskManager.instance != null) {
-            TaskManager.instance.UpdateTaskUI(totalWoodCollected);
+            TaskManager.instance.UpdateTebangProgress(totalWoodCollected);
         }
     }
 
@@ -70,6 +71,7 @@ public class InventoryManager : MonoBehaviour {
             woodKecilCount--;
             UpdateUI();
             SpawnUICoin(priceKecil, btnJualKecilPos);
+            if(TaskManager.instance != null) TaskManager.instance.NotifyWoodSold();
         }
     }
 
@@ -78,6 +80,7 @@ public class InventoryManager : MonoBehaviour {
             woodSedangCount--;
             UpdateUI();
             SpawnUICoin(priceSedang, btnJualSedangPos);
+            if(TaskManager.instance != null) TaskManager.instance.NotifyWoodSold();
         }
     }
 
@@ -86,6 +89,7 @@ public class InventoryManager : MonoBehaviour {
             woodBesarCount--;
             UpdateUI();
             SpawnUICoin(priceBesar, btnJualBesarPos);
+            if(TaskManager.instance != null) TaskManager.instance.NotifyWoodSold();
         }
     }
 

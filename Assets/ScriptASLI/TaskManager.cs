@@ -5,116 +5,169 @@ using TMPro;
 public class TaskManager : MonoBehaviour {
     public static TaskManager instance;
 
-    [Header("Misi Settings")]
-    public string itemName = "Kayu"; 
-    public int targetAmount = 5;
-    public int rewardAmount = 500;
-
-    [Header("UI Reference")]
-    public Slider progressSlider;
-    public TextMeshProUGUI progressText;
+    [Header("UI Panels & Notification")]
     public GameObject misiPanel;
+    public GameObject asetBlur; 
+    public GameObject ikonNotifikasi; // Tarik objek Tanda Seru (di luar panel) ke sini
 
-    [Header("Claim Button Settings")]
-    public Button claimButton; 
-    public Image claimButtonImage; 
-    public Sprite btnAbuAbu; // Masukkan Sprite Button Grey di sini
-    public Sprite btnHijauAmbil; // Masukkan Sprite Button Green di sini
+    [Header("Misi Progress Logic")]
+    private int woodOffset = 0;
+    private bool isMisi2Started = false;
+    
+    [Header("Misi 1: Tebang + Jual")]
+    public GameObject barTebangJual;
+    public Button btnAmbilTebangJual;
+    public Image imgBtnTebangJual;
+    public TextMeshProUGUI txtTebangJual;
+    public int rewardMisi1 = 5000;
+    private bool isJualDone = false;
+    private bool isMisi1Claimed = false;
 
-    [Header("Coin Effect")]
-    public GameObject uiCoinPrefab; 
-    public RectTransform navCoinTarget; 
+    [Header("Misi 2: Tebang Pohon")]
+    public GameObject barTebangPohon; 
+    public Button btnAmbilTebangPohon; 
+    public Image imgBtnTebangPohon;
+    public Slider sliderTebang;
+    public TextMeshProUGUI txtTebang;
+    public int targetTebang = 5;
+    public int rewardMisi2 = 10000;
+    private bool isTebangDone = false;
+    private bool isMisi2Claimed = false;
 
-    private bool isTaskCompleted = false;
-    private bool isClaimed = false;
+    [Header("Global UI Settings")]
+    public Sprite btnAbuAbu; 
+    public Sprite btnHijauAmbil; 
 
-    void Awake() {
-        instance = this;
-    }
+    void Awake() { instance = this; }
 
     void Start() {
-        if (progressSlider != null) {
-            progressSlider.minValue = 0;
-            progressSlider.maxValue = targetAmount;
-            progressSlider.value = 0;
-        }
+        if (misiPanel != null) misiPanel.SetActive(false);
+        if (asetBlur != null) asetBlur.SetActive(false);
         
-        // Start selalu pakai gambar abu-abu
-        if (claimButtonImage != null) claimButtonImage.sprite = btnAbuAbu;
+        // Misi 2 harus mati total di awal
+        if (barTebangPohon != null) barTebangPohon.SetActive(false); 
+        isMisi2Started = false; 
 
-        UpdateTaskUI(0);
+        if (ikonNotifikasi != null) ikonNotifikasi.SetActive(true);
+
+        UpdateMisi1UI();
     }
 
-    public void UpdateTaskUI(int currentCount) {
-        if (isClaimed) return;
-
-        if (progressSlider != null) {
-            progressSlider.maxValue = targetAmount;
-            progressSlider.value = currentCount;
-        }
-
-        if (currentCount >= targetAmount) {
-            isTaskCompleted = true;
-            
-            if (progressText != null) {
-                progressText.text = "Selesai!";
-            }
-
-            // Ganti ke Gambar Hijau
-            if (claimButtonImage != null) claimButtonImage.sprite = btnHijauAmbil;
-
-        } else {
-            isTaskCompleted = false;
-            
-            if (progressText != null) {
-                progressText.text = itemName + " (" + currentCount.ToString() + "/" + targetAmount.ToString() + ")";
-            }
-
-            // Tetap Gambar Abu-abu
-            if (claimButtonImage != null) claimButtonImage.sprite = btnAbuAbu;
-        }
-    }
-
-    public void AmbilHadiah() {
-        // Hanya bisa diklik kalau sudah selesai dan belum pernah diklaim
-        if (isTaskCompleted && !isClaimed) {
-            isClaimed = true;
-            
-            // Efek koin terbang
-            SpawnClaimCoins();
-
-            // Opsional: Hilangkan gambar tombol atau ganti kembali ke abu setelah diambil
-            if (claimButtonImage != null) claimButtonImage.color = new Color(1, 1, 1, 0.5f); 
-        }
-    }
-
-    void SpawnClaimCoins() {
-        if (uiCoinPrefab == null || navCoinTarget == null) return;
-
-        int jumlahVisualKoin = 8; 
-        
-        for (int i = 0; i < jumlahVisualKoin; i++) {
-            GameObject coin = Instantiate(uiCoinPrefab, misiPanel.transform.parent);
-            coin.transform.SetAsLastSibling();
-            coin.transform.position = claimButton.transform.position;
-
-            UICoinEffect effect = coin.AddComponent<UICoinEffect>();
-            
-            int nilaiKoinIni = (i == 0) ? rewardAmount : 0; 
-            effect.Init(navCoinTarget, nilaiKoinIni);
-        }
-    }
-
+    // --- FUNGSI TOMBOL IKON MISI ---
     public void OpenMisi() {
-        misiPanel.SetActive(true);
-        if (InventoryManager.instance != null) {
-            // Ambil total semua jenis kayu untuk menghitung progres misi
-            int progressMisi = InventoryManager.instance.totalWoodCollected;
-            UpdateTaskUI(progressMisi);
+        if (misiPanel != null) {
+            misiPanel.SetActive(true);
+            asetBlur.SetActive(true);
+
+            // 2. SAAT PANEL DIBUKA: Matikan tanda seru (dianggap sudah terbaca)
+            if (ikonNotifikasi != null) ikonNotifikasi.SetActive(false);
+            
+            // Refresh tampilan slider jika panel dibuka
+            if (InventoryManager.instance != null) {
+                UpdateTebangProgress(InventoryManager.instance.totalWoodCollected);
+            }
         }
     }
 
     public void CloseMisi() {
         misiPanel.SetActive(false);
+        asetBlur.SetActive(false);
+    }
+
+    // --- LOGIKA MISI 1 ---
+    public void NotifyWoodSold() {
+        if (isMisi1Claimed) return;
+        isJualDone = true;
+
+        // 3. JIKA MISI SELESAI & PANEL LAGI TUTUP: Munculkan tanda seru lagi
+        if (!misiPanel.activeSelf && ikonNotifikasi != null) {
+            ikonNotifikasi.SetActive(true);
+        }
+
+        UpdateMisi1UI();
+    }
+
+    void UpdateMisi1UI() {
+        if (isJualDone) {
+            txtTebangJual.text = "Selesai!";
+            imgBtnTebangJual.sprite = btnHijauAmbil; 
+            
+            if (barTebangPohon != null && !barTebangPohon.activeSelf) {
+                barTebangPohon.SetActive(true);
+                barTebangPohon.transform.SetAsFirstSibling(); 
+                
+                // 4. ADA BAR BARU: Munculkan tanda seru jika panel sedang tutup
+                if (!misiPanel.activeSelf && ikonNotifikasi != null) ikonNotifikasi.SetActive(true);
+            }
+        } else {
+            txtTebangJual.text = "Tebang & Jual Kayu";
+            imgBtnTebangJual.sprite = btnAbuAbu; 
+        }
+    }
+
+    public void AmbilHadiahTebangJual() {
+        if (isJualDone && !isMisi1Claimed) {
+            isMisi1Claimed = true;
+
+            // TEPAT SAAT INI: Kunci jumlah kayu sebagai titik nol
+            if (InventoryManager.instance != null) {
+                woodOffset = InventoryManager.instance.totalWoodCollected;
+            }
+
+            // SEKARANG: Baru bolehkan misi 2 menghitung
+            isMisi2Started = true; 
+
+            if (barTebangPohon != null) {
+                barTebangPohon.SetActive(true);
+                barTebangPohon.transform.SetAsFirstSibling(); 
+                
+                // Paksa visual ke 0/30 (Total - Offset = 0)
+                UpdateTebangProgress(InventoryManager.instance.totalWoodCollected); 
+            }
+
+            if (MoneyManager.instance != null) MoneyManager.instance.AddMoney(rewardMisi1);
+            btnAmbilTebangJual.gameObject.SetActive(false);
+            txtTebangJual.text = "Misi Selesai!";
+        }
+    }
+
+    public void UpdateTebangProgress(int totalCount) {
+        // SYARAT KETAT: Bar harus aktif DAN kunci isMisi2Started harus TRUE
+        if (barTebangPohon != null && barTebangPohon.activeSelf && isMisi2Started && !isMisi2Claimed) {
+            
+            // Logika: Total kayu saat ini dikurangi kayu yang sudah ada di tas saat misi dimulai
+            int progressMisiSekarang = totalCount - woodOffset; 
+
+            if (progressMisiSekarang < 0) progressMisiSekarang = 0;
+
+            sliderTebang.maxValue = targetTebang;
+            sliderTebang.value = progressMisiSekarang;
+            txtTebang.text = "Tebang Pohon (" + progressMisiSekarang.ToString() + "/" + targetTebang.ToString() + ")";
+
+            if (progressMisiSekarang >= targetTebang) {
+                isTebangDone = true;
+                imgBtnTebangPohon.sprite = btnHijauAmbil;
+                
+                if (!misiPanel.activeSelf && ikonNotifikasi != null) {
+                    ikonNotifikasi.SetActive(true);
+                }
+            }
+        }
+    }
+
+    // Di dalam TaskManager.cs
+    public void AmbilHadiahTebangPohon() {
+        if (isTebangDone && !isMisi2Claimed) {
+            isMisi2Claimed = true;
+
+            if (MoneyManager.instance != null) {
+                MoneyManager.instance.AddMoney(rewardMisi2);
+            }
+
+            // --- BARIS JURNAL DI SINI SUDAH DIHAPUS ---
+
+            btnAmbilTebangPohon.gameObject.SetActive(false);
+            txtTebang.text = "Misi Selesai!";
+        }
     }
 }

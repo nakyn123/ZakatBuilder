@@ -29,8 +29,8 @@ public class JurnalManager : MonoBehaviour
     public GameObject groupZakatPertanian;
 
     [Header("Settings")]
-    public float nisabLimit = 85000000f; 
-    public float timerPerMonth = 10f; // 10 detik per bulan sesuai keinginanmu
+    public float nisabLimit = 5000f; 
+    public float timerPerMonth = 5f; // 5 detik per bulan sesuai keinginanmu
 
     private int currentHaulMonth = 0;
     private bool isNisabReached = false;
@@ -88,7 +88,10 @@ public class JurnalManager : MonoBehaviour
         // Hidupkan centang
         if (checkNisab != null) checkNisab.SetActive(true);
         if (checkZakatDagang != null) checkZakatDagang.SetActive(true);
-        
+        if (ikonNotifikasiJurnal != null && !jurnalContent.activeSelf) 
+        {
+            ikonNotifikasiJurnal.SetActive(true);
+        }
         // Mulai slider Haul
         StopAllCoroutines(); 
         StartCoroutine(HaulTimerRoutine());

@@ -31,6 +31,8 @@ public class JurnalManager : MonoBehaviour
     [Header("Settings")]
     public float nisabLimit = 5000f; 
     public float timerPerMonth = 5f; // 5 detik per bulan sesuai keinginanmu
+    public ZakatPanelManager zakatManager;
+    
 
     private int currentHaulMonth = 0;
     private bool isNisabReached = false;
@@ -145,6 +147,12 @@ public class JurnalManager : MonoBehaviour
             txtStatus.text = "Wajib Zakat";
             txtStatus.color = Color.black;
             messageText.SetActive(true);
+            if (zakatManager != null)
+            {
+                // Jika ini di halaman Perdagangan (Page 1)
+                zakatManager.isPerdaganganUnlocked = true;
+                zakatManager.UpdateItemVisuals();
+            }
             if (!isNotificationShown && !jurnalContent.activeSelf) {
                 if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(true);
                 isNotificationShown = true; // Tandai agar tidak muncul berulang kali
@@ -167,4 +175,18 @@ public class JurnalManager : MonoBehaviour
     }
 
     public void CloseJurnal() { jurnalContent.SetActive(false); asetBlur.SetActive(false); }
+    public bool IsPerdaganganUnlocked()
+    {
+        return isNisabReached && isHaulComplete;
+    }
+
+    public bool IsPertanianUnlocked()
+    {
+        return false; // nanti kamu isi sendiri
+    }
+
+    public bool IsPeternakanUnlocked()
+    {
+        return false; // nanti kamu isi sendiri
+    }
 }

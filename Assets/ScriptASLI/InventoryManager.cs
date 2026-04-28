@@ -34,11 +34,19 @@ public class InventoryManager : MonoBehaviour {
     [Header("Misi Progress - Tetap Bertambah Walau Dijual")]
     public int totalWoodCollected = 0; // Tambahkan ini
 
+    [Header("Slot GameObjects")]
+    public GameObject slotKecil;
+    public GameObject slotSedang;
+    public GameObject slotBesar;
+    public RectTransform asetArrayRect; // Tarik objek ASET_ARRAY ke sini
+
     void Awake() { instance = this; }
 
-    void Start() {
+   void Start() {
         if (inventoryPanel != null) inventoryPanel.SetActive(false);
-        UpdateUI();
+        
+        // Panggil ini agar semua slot yang jumlahnya 0 langsung hilang saat game mulai
+        UpdateUI(); 
     }
 
     public void AddWood(int amount, int type) {
@@ -56,9 +64,25 @@ public class InventoryManager : MonoBehaviour {
     }
 
     public void UpdateUI() {
-        if(woodKecilText != null) woodKecilText.text = woodKecilCount.ToString() + "x";
-        if(woodSedangText != null) woodSedangText.text = woodSedangCount.ToString() + "x";
-        if(woodBesarText != null) woodBesarText.text = woodBesarCount.ToString() + "x";
+        // Logika Kayu Kecil
+        bool punyaKecil = woodKecilCount > 0;
+        slotKecil.SetActive(punyaKecil);
+        if (punyaKecil) woodKecilText.text = woodKecilCount.ToString() + "x";
+
+        // Logika Kayu Sedang
+        bool punyaSedang = woodSedangCount > 0;
+        slotSedang.SetActive(punyaSedang);
+        if (punyaSedang) woodSedangText.text = woodSedangCount.ToString() + "x";
+
+        // Logika Kayu Besar
+        bool punyaBesar = woodBesarCount > 0;
+        slotBesar.SetActive(punyaBesar);
+        if (punyaBesar) woodBesarText.text = woodBesarCount.ToString() + "x";
+
+        // --- PENTING: Paksa Layout Group menghitung ulang posisi ---
+        if (asetArrayRect != null) {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(asetArrayRect);
+        }
     }
 
     public void ToggleInventory() {

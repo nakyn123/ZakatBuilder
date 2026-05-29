@@ -8,6 +8,7 @@ public class ZakatPerdaganganPanel : MonoBehaviour
     [Header("UI Elements")]
     public Button btnClose;
     public Button btnLanjut;
+    public Button btnCloseReward;
 
     [Header("Questions")]
     public Button answerA1; 
@@ -42,7 +43,21 @@ public class ZakatPerdaganganPanel : MonoBehaviour
     void Start()
     {
         if (btnClose != null)
-            btnClose.onClick.AddListener(() => gameObject.SetActive(false));
+        {
+            btnClose.onClick.RemoveAllListeners();
+            // --- PERBAIKAN: Gunakan UIManager saat tombol close kuis diklik ---
+            btnClose.onClick.AddListener(() => {
+                if (UIManager.instance != null)
+                    UIManager.instance.ClosePanelMenu(gameObject);
+                else
+                    gameObject.SetActive(false);
+            });
+        }
+
+        if (btnCloseReward != null)
+        {
+            btnCloseReward.onClick.AddListener(KlaimRewardDanClose);
+        }
 
         SetupButton(answerA1, true);
         SetupButton(answerB1, false);
@@ -67,8 +82,16 @@ public class ZakatPerdaganganPanel : MonoBehaviour
 
     void BukaFormKuis()
     {
-        if (panelKuisBG != null) panelKuisBG.SetActive(false); // Sembunyikan kuis
-        if (panelFormKuis != null) panelFormKuis.SetActive(true); // Tampilkan form
+        if (panelKuisBG != null) panelKuisBG.SetActive(false); 
+        if (panelFormKuis != null) panelFormKuis.SetActive(true); 
+
+        // --- TAMBAHKAN KODE INI ---
+        // Paksa kalkulator perdagangan untuk mengambil nilai terbaru dari MoneyManager saat form dibuka
+        ZakatCalculator calc = GetComponentInChildren<ZakatCalculator>(true);
+        if (calc != null)
+        {
+            calc.SetupHartaRupiah();
+        }
     }
 
     void SetupButton(Button btn, bool isCorrect)
@@ -148,4 +171,40 @@ public class ZakatPerdaganganPanel : MonoBehaviour
         
         if (panelRewardDagang != null) panelRewardDagang.SetActive(true);
     }
+
+    // Fungsi baru untuk menghandle pemberian uang pasca kuis level 1 selesai
+    void KlaimRewardDanClose()
+    {
+        // 1. Tambah data 100 gram PERAK ke dompet babak 2 secara resmi (Sama persis seperti sistem cheat K)
+        if (MoneyManager.instance != null)
+        {
+            // Menambah 100 perak, otomatis memicu UpdateEmasPerakUI() dan CheckEmasPerakNisab() bawaan game
+            MoneyManager.instance.AddPerak(100); 
+            Debug.Log("<color=green>[Jalur Normal]</color> Sukses menambahkan 100 Gram Perak dari Reward Kuis!");
+        }
+
+        // 2. Akses ZakatPanelManager agar tahu kalau perdagangan sekarang sudah UNLOCKED
+        ZakatPanelManager panelManager = FindFirstObjectByType<ZakatPanelManager>();
+        if (panelManager != null)
+        {
+            panelManager.isPerdaganganUnlocked = true;
+            panelManager.UpdatePaymentButton();
+            panelManager.UpdateItemVisuals();
+        }
+
+        // 3. PANGGIL LEVEL 2 MANAGER UNTUK TRANFISI LINGKUNGAN & MISI
+        if (Level2Manager.instance != null)
+        {
+            Level2Manager.instance.SwitchToLevel2();
+        }
+        else
+        {
+            Debug.LogError("[ZakatPerdaganganPanel] Level2Manager.instance tidak ditemukan di scene!");
+        }
+
+        // 4. Matikan Panel Reward dan nonaktifkan GameObject kuis ini
+        if (panelRewardDagang != null) panelRewardDagang.SetActive(false);
+        gameObject.SetActive(false); 
+    }
+    // Tambahkan ini di dalam class ZakatPanelManager : MonoBehaviour
 }

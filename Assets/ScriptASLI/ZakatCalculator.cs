@@ -20,19 +20,44 @@ public class ZakatCalculator : MonoBehaviour
     public AudioClip correctSound;
 
     public ZakatPerdaganganPanel mainPanelScript;
+    [Header("Zakat Emas Perak Context")]
+    public ZakatEmasPerakPanel emasPerakPanelScript; // Drag skrip baru tadi ke slot ini di Inspector
 
     private string expression = ""; 
 
     void OnEnable()
     {
-        if (MoneyManager.instance != null)
+        // --- SEKARANG AMAN: Hanya merubah teks jika benar-benar berada di panel perdagangan ---
+        if (MoneyManager.instance != null && mainPanelScript != null && mainPanelScript.gameObject.activeInHierarchy)
         {
-            txtHartaku.text = FormatRupiah(MoneyManager.instance.totalMoney);
+            if (txtHartaku != null)
+            {
+                txtHartaku.text = FormatRupiah(MoneyManager.instance.totalMoney);
+            }
         }
+        
+        // Jika yang aktif adalah panel emas perak, biarkan skrip dinamis emas perak yang mengontrol teksnya
+        if (emasPerakPanelScript != null && emasPerakPanelScript.gameObject.activeInHierarchy)
+        {
+            emasPerakPanelScript.ConfigureFormDinamis();
+        }
+
         Clear();
         btnSelesai.onClick.RemoveAllListeners(); 
         btnSelesai.onClick.AddListener(ValidateZakat);
         if (audioSource == null) audioSource = GetComponent<AudioSource>();
+    }
+
+    // Fungsi baru untuk dipanggil secara paksa saat pindah halaman kuis
+    public void SetupHartaRupiah()
+    {
+        if (MoneyManager.instance != null && mainPanelScript != null && mainPanelScript.gameObject.activeInHierarchy)
+        {
+            if (txtHartaku != null)
+            {
+                txtHartaku.text = FormatRupiah(MoneyManager.instance.totalMoney);
+            }
+        }
     }
 
     public void PushNumber(string number)
@@ -68,21 +93,43 @@ public class ZakatCalculator : MonoBehaviour
         try {
             DataTable dt = new DataTable();
             
-            // Siapkan string untuk dihitung sistem
             string formula = expression.Replace("x", "*")
-                                       .Replace("2.5%", "0.025")
-                                       .Replace("5%", "0.05")
-                                       .Replace("10%", "0.1");
+                                    .Replace("2.5%", "0.025")
+                                    .Replace("5%", "0.05")
+                                    .Replace("10%", "0.1");
 
             var result = dt.Compute(formula, "");
             double finalVal = System.Convert.ToDouble(result);
 
-            // Munculkan hasil dengan maksimal 3 angka di belakang koma
-            expression = finalVal.ToString("G29"); // G29 menghapus nol berlebih di akhir tapi tetap presisi
-            
-            // Jika ingin fix 3 angka (misal 25.000), gunakan finalVal.ToString("F3")
-            
+            expression = finalVal.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
             UpdateDisplay();
+
+            // --- SISTEM UPDATE INPUT FIELD OTOMATIS BERDASARKAN PANEL YANG AKTIF ---
+            if (mainPanelScript != null && mainPanelScript.gameObject.activeInHierarchy)
+            {
+                // Jika di panel perdagangan, arahkan ke input tunggal bawaan dagang
+                if (inputZakat != null) inputZakat.text = expression;
+            }
+            else if (emasPerakPanelScript != null && emasPerakPanelScript.gameObject.activeInHierarchy)
+            {
+                // Jika di panel emas/perak, cek input mana yang sedang aktif atau kosong untuk diisi
+                if (emasPerakPanelScript.isEmasWajib && emasPerakPanelScript.isPerakWajib)
+                {
+                    // Jika dua-duanya aktif, isi ke input field yang sedang kosong atau jadikan default ke Emas terlebih dahulu
+                    if (string.IsNullOrEmpty(emasPerakPanelScript.inputZakatEmas.text))
+                        emasPerakPanelScript.inputZakatEmas.text = expression;
+                    else
+                        emasPerakPanelScript.inputZakatPerak.text = expression;
+                }
+                else if (emasPerakPanelScript.isEmasWajib)
+                {
+                    emasPerakPanelScript.inputZakatEmas.text = expression;
+                }
+                else if (emasPerakPanelScript.isPerakWajib)
+                {
+                    emasPerakPanelScript.inputZakatPerak.text = expression;
+                }
+            }
         } catch {
             expression = "Error";
             UpdateDisplay();
@@ -100,36 +147,46 @@ public class ZakatCalculator : MonoBehaviour
         txtDisplayKalkulator.text = string.IsNullOrEmpty(expression) ? "0" : expression;
     }
 
-    // ... (Fungsi ValidateZakat dan FormatRupiah tetap sama)
-    void ValidateZakat()
+    public void ValidateZakat()
     {
-        float totalHarta = MoneyManager.instance.totalMoney;
-        float correctAmount = totalHarta * 0.025f;
-
-        if (float.TryParse(inputZakat.text, out float userGuess))
+        // 1. Jika yang sedang aktif adalah Panel Perdagangan
+        if (mainPanelScript != null && mainPanelScript.gameObject.activeInHierarchy)
         {
-            // Gunakan toleransi kecil untuk perbandingan float
-            if (Mathf.Abs(userGuess - correctAmount) < 1.0f) // Ubah 0.01f ke 1.0f jika nominal Rupiah bulat
-            {
-                if (audioSource && correctSound) audioSource.PlayOneShot(correctSound);
+            float totalHarta = MoneyManager.instance.totalMoney;
+            float correctAmount = totalHarta * 0.025f; 
 
-                // --- TAMBAHKAN BARIS INI ---
-                if (mainPanelScript != null)
+            string cleanInput = inputZakat.text.Replace(".", "");
+
+            if (float.TryParse(cleanInput, out float userGuess))
+            {
+                if (Mathf.Abs(userGuess - correctAmount) < 1.0f) 
                 {
-                    mainPanelScript.MunculkanReward();
+                    if (audioSource && correctSound) audioSource.PlayOneShot(correctSound);
+
+                    int amountToPay = Mathf.RoundToInt(userGuess);
+                    MoneyManager.instance.RemoveMoney(amountToPay);
+
+                    if (mainPanelScript != null)
+                    {
+                        mainPanelScript.MunculkanReward();
+                    }
                 }
                 else
                 {
-                    Debug.LogError("Main Panel Script belum diisi di Inspector!");
+                    if (audioSource && wrongSound) audioSource.PlayOneShot(wrongSound);
+                    Debug.Log($"Jawaban salah! Input: {userGuess}, Seharusnya: {correctAmount}");
                 }
             }
-            else
-            {
-                if (audioSource && wrongSound) audioSource.PlayOneShot(wrongSound);
-            }
+        }
+        // 2. Jika yang sedang aktif adalah Panel Emas & Perak
+        else if (emasPerakPanelScript != null && emasPerakPanelScript.gameObject.activeInHierarchy)
+        {
+            Debug.Log("[ZakatCalculator] Mengalihkan validasi langsung ke fungsi internal Emas Perak.");
+            
+            // ✅ KODE AMAN: Panggil langsung fungsi internalnya, jangan pakai onClick.Invoke()!
+            emasPerakPanelScript.ValidateZakatEmasPerak();
         }
     }
-
     string FormatRupiah(int amount)
     {
         return "Rp " + amount.ToString("N0", new CultureInfo("id-ID"));

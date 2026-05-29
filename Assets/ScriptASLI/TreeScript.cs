@@ -23,6 +23,10 @@ public class TreeSimple : MonoBehaviour {
     [Header("Respawn Settings")]
     public float respawnTime = 5f; 
 
+    [Header("Audio Settings")]
+    public AudioSource treeAudioSource; 
+    public AudioClip chopSound; // Suara saat menebang (hit)
+
     private Button globalButton;
     private Image buttonImage;
     private int hitCount = 0; 
@@ -69,6 +73,10 @@ public class TreeSimple : MonoBehaviour {
 
     void ActionPotong() {
         if (isDestroyed) return;
+
+        if (treeAudioSource != null && chopSound != null) {
+            treeAudioSource.PlayOneShot(chopSound);
+        }
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null) {

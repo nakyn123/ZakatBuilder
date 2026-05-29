@@ -86,7 +86,35 @@ public class InventoryManager : MonoBehaviour {
     }
 
     public void ToggleInventory() {
-        if (inventoryPanel != null) inventoryPanel.SetActive(!inventoryPanel.activeSelf);
+        if (inventoryPanel == null) return;
+
+        // Cek kondisi sebelum di-toggle
+        bool currentState = inventoryPanel.activeSelf;
+
+        if (!currentState)
+        {
+            // Jika inventory mau DIBUKA
+            if (UIManager.instance != null)
+            {
+                UIManager.instance.OpenPanelMenu(inventoryPanel);
+            }
+            else
+            {
+                inventoryPanel.SetActive(true);
+            }
+        }
+        else
+        {
+            // Jika inventory mau DITUTUP
+            if (UIManager.instance != null)
+            {
+                UIManager.instance.ClosePanelMenu(inventoryPanel);
+            }
+            else
+            {
+                inventoryPanel.SetActive(false);
+            }
+        }
     }
 
     // --- PERBAIKAN: Fungsi jual sekarang mengirim posisi tombolnya ---
@@ -134,4 +162,5 @@ public class InventoryManager : MonoBehaviour {
             effect.Init(navCoinTarget, nilaiPerKoin);
         }
     }
+    // Tambahkan ini di dalam class ZakatPanelManager : MonoBehaviour
 }

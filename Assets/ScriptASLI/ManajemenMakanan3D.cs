@@ -7,31 +7,27 @@ public class ManajemenMakanan3D : MonoBehaviour
     [SerializeField] private GameObject daunFase2Berkurang;
     [SerializeField] private GameObject daunFase3Sedikit;
 
-    [Header("Objek Peringatan 2D (Sprite)")]
-    [SerializeField] private GameObject spriteWarningCaution;
+    [Header("Tombol Interaksi Dunia (3D/World)")]
+    [SerializeField] private GameObject btnMasukinPakan; // Tombol awal (saat pakan kosong)
+    [SerializeField] private GameObject btnIsiUlang;     // Tombol saat makanan habis
 
     [Header("Pengaturan Waktu (Detik)")]
     [SerializeField] private float waktuMakanTotal = 10f; 
 
     private float waktuBerjalan;
     private bool makananHabis = false;
+    private bool pakanPertamaSudahDimasukan = false; 
 
     void Start()
     {
-        // Kondisi awal: Hanya daun fase 1 (penuh) yang aktif
-        ResetFaseVisual();
-        waktuBerjalan = 0f;
+        SetPakanAwalKosong();
     }
 
     void Update()
     {
-        // Jika makanan sudah habis, stop logika update berkurang
-        if (makananHabis) return;
+        if (!pakanPertamaSudahDimasukan || makananHabis) return;
 
-        // Waktu terus berjalan seiring sapi makan
         waktuBerjalan += Time.deltaTime;
-
-        // Hitung persentase sisa makanan (1.0 turun ke 0.0)
         float persentaseMakanan = 1f - (waktuBerjalan / waktuMakanTotal);
 
         if (persentaseMakanan <= 0f)
@@ -40,22 +36,18 @@ public class ManajemenMakanan3D : MonoBehaviour
         }
         else if (persentaseMakanan <= 0.33f)
         {
-            // FASE 3: Sisa Sedikit (33% kebawah menuju 0%)
             GantiVisual(daunFase3Sedikit);
         }
         else if (persentaseMakanan <= 0.66f)
         {
-            // FASE 2: Berkurang Setengah (66% kebawah menuju 33%)
             GantiVisual(daunFase2Berkurang);
         }
         else
         {
-            // FASE 1: Penuh (Diatas 66% hingga 100%)
             GantiVisual(daunFase1Penuh);
         }
     }
 
-    // Fungsi pembantu agar perpindahan visual antar objek 3D bersih
     private void GantiVisual(GameObject faseYangAktif)
     {
         if (daunFase1Penuh != null) daunFase1Penuh.SetActive(daunFase1Penuh == faseYangAktif);
@@ -63,36 +55,75 @@ public class ManajemenMakanan3D : MonoBehaviour
         if (daunFase3Sedikit != null) daunFase3Sedikit.SetActive(daunFase3Sedikit == faseYangAktif);
     }
 
+    private void SetPakanAwalKosong()
+    {
+        pakanPertamaSudahDimasukan = false;
+        makananHabis = false;
+        GantiVisual(null);
+
+        if (btnMasukinPakan != null) btnMasukinPakan.SetActive(true);
+        if (btnIsiUlang != null) btnIsiUlang.SetActive(false);
+    }
+
     private void SetMakananHabis()
     {
         makananHabis = true;
-
-        // Matikan semua model daun 3D
         GantiVisual(null);
 
-        // Munculkan tanda Caution di tempat makan
-        if (spriteWarningCaution != null)
-        {
-            spriteWarningCaution.SetActive(true);
-        }
+        if (btnMasukinPakan != null) btnMasukinPakan.SetActive(false);
+        if (btnIsiUlang != null) btnIsiUlang.SetActive(true);
 
-        Debug.Log("Makanan sapi telah habis!");
+        Debug.Log("Makanan sapi telah habis! Tombol Isi Ulang Muncul.");
     }
 
-    private void ResetFaseVisual()
+    // =================================================================
+// COMMAND KHUSUS MASUKIN PAKAN (Tombol Pertama)
+// =================================================================
+    public void MasukinPakanPertama()
     {
-        if (daunFase1Penuh != null) daunFase1Penuh.SetActive(true);
-        if (daunFase2Berkurang != null) daunFase2Berkurang.SetActive(false);
-        if (daunFase3Sedikit != null) daunFase3Sedikit.SetActive(false);
-        if (spriteWarningCaution != null) spriteWarningCaution.SetActive(false);
+        // Cek ke inventory, jika pakan ada dan berhasil dikurangi 1x
+        if (InventoryManager.instance != null && InventoryManager.instance.GunakanPakanDiWorld())
+        {
+            MulaiSapiMakan();
+            Debug.Log("[PakanSapi] Player memasukkan pakan. Sisa di inventory: " + InventoryManager.instance.pakanRumputCount);
+        }
+        else
+        {
+            Debug.LogWarning("[PakanSapi] Gagal memberi makan! Pakan di Inventory HABIS. Silakan beli di toko.");
+            // Opsi tambahan: kamu bisa munculin pop-up tulisan "Pakan Habis!" di layar di sini
+        }
+        if (TaskManager.instance != null) TaskManager.instance.NotifyIsiPakanWorld3D();
     }
 
-    // Fungsi otomatis dipicu saat pemain melakukan klik pada objek 2D ini di dunia game
-    public void IsiUlangMakanan()
+    // =================================================================
+    // COMMAND KHUSUS ISI ULANG (Tombol Kedua)
+    // =================================================================
+    public void IsiUlangMakananHabis()
+    {
+        // Logikanya sama, potong 1 kuota pakan lagi dari inventory untuk isi ulang
+        if (InventoryManager.instance != null && InventoryManager.instance.GunakanPakanDiWorld())
+        {
+            MulaiSapiMakan();
+            Debug.Log("[PakanSapi] Player mengisi ulang pakan. Sisa di inventory: " + InventoryManager.instance.pakanRumputCount);
+        }
+        else
+        {
+            Debug.LogWarning("[PakanSapi] Gagal isi ulang! Pakan di Inventory HABIS.");
+        }
+        if (TaskManager.instance != null) TaskManager.instance.NotifyIsiPakanWorld3D();
+    }
+
+    // Fungsi pembantu internal untuk menyatukan logika reset visual & waktu
+    private void MulaiSapiMakan()
     {
         waktuBerjalan = 0f;
         makananHabis = false;
-        ResetFaseVisual();
-        Debug.Log("Makanan berhasil diisi ulang!");
+        pakanPertamaSudahDimasukan = true; 
+
+        GantiVisual(daunFase1Penuh);
+
+        // Sembunyikan kedua tombol di dunia saat pakan sedang tersedia
+        if (btnMasukinPakan != null) btnMasukinPakan.SetActive(false);
+        if (btnIsiUlang != null) btnIsiUlang.SetActive(false);
     }
 }

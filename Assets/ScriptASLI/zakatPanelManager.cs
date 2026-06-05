@@ -4,6 +4,9 @@ using System.Collections;
 
 public class ZakatPanelManager : MonoBehaviour
 {
+    // 🔥 TAMBAHKAN LINE INI (Singleton Instance)
+    public static ZakatPanelManager instance;
+
     [Header("UI References")]
     public GameObject zakatCarouselPanel;
     public GameObject asetBlur;
@@ -56,6 +59,7 @@ public class ZakatPanelManager : MonoBehaviour
 
     void Awake()
     {   
+        instance = this;
         items = new RectTransform[] {
             element0,
             element1,

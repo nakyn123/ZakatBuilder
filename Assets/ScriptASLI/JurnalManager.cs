@@ -15,6 +15,8 @@ public class JurnalManager : MonoBehaviour
     public Button btnNext;
     public Button btnPrevious;
 
+    private int currentPage = 1; 
+
     [Header("Halaman 1: Zakat Perdagangan")]
     public GameObject groupZakatPerdagangan; 
     public GameObject checkNisab;
@@ -26,29 +28,60 @@ public class JurnalManager : MonoBehaviour
     public Slider haulSlider;
 
     [Header("Halaman 2: Zakat Emas & Perak")]
-    public GameObject groupZakatEmasPerak; // Ini panel halaman 2 kamu
-    public GameObject visualHalamanLock;         // Gambar gembok halaman 2
-    public GameObject visualHalamanUnlock;       // Konten asli emas/perak
+    public GameObject groupZakatEmasPerak; 
+    public GameObject visualHalamanLock;         
+    public GameObject visualHalamanUnlock;       
     public GameObject navCoinLeftPanel;
-
-    // Komponen Checklist & UI Baru untuk Emas/Perak (Disamakan dengan Dagang)
     public GameObject checkNisabEmasPerak;
     public GameObject checkHaulEmasPerak;
     public GameObject checkZakatEmasPerak;
-    public TextMeshProUGUI txtHartaEmas;         // Text untuk Gram Emas saat ini
-    public TextMeshProUGUI txtHartaPerak;        // Text untuk Gram Perak saat ini
-    public TextMeshProUGUI txtEmasPerakStatus;   // Teks status wajib zakat emas/perak
-    public GameObject messageTextEmasPerak;      // Pesan deskripsi/pemberitahuan tambahan
+    public TextMeshProUGUI txtHartaEmas;         
+    public TextMeshProUGUI txtHartaPerak;        
+    public TextMeshProUGUI txtEmasPerakStatus;   
+    public GameObject messageTextEmasPerak;      
     public Slider haulSliderEmasPerak;
+
+    [Header("Halaman 3: Zakat Ternak (Updated)")]
+    public GameObject groupZakatTernak;          
+    public GameObject panelLockTernak;           
+    public GameObject panelUnlockTernak;         
+    public GameObject checkNisabTernak;          
+    public GameObject checkHaulTernak;           
+    public GameObject checkZakatTernak;          
+    public TextMeshProUGUI txtHartaSapi;        
+    public TextMeshProUGUI txtHartaKambing;     
+    public TextMeshProUGUI txtTernakStatus;      
+    public GameObject messageTextTernak;         
+    public Slider haulSliderTernak;              
 
     [Header("Settings")]
     public float nisabLimit = 5000f; 
-    public float timerPerMonth = 5f; // 5 detik per bulan sesuai keinginanmu
+    public float timerPerMonth = 5f; 
     public ZakatPanelManager zakatManager;
     
-    // --- MODIFIKASI BARU: Batas Kriteria Nisab Emas & Perak Sesuai Permintaan (94g & 624g) ---
     public float nisabEmasKriteria = 94f;        
     public float nisabPerakKriteria = 624f;      
+    
+    public int nisabSapiKriteria = 30;         
+    public int nisabKambingKriteria = 40; 
+
+    // 🔥 KONTROL INSPECTOR KHUSUS HAUL & ANAK TERNAK
+    [Space(10)]
+    [Tooltip("Waktu detik per bulan KHUSUS untuk Haul Ternak Halaman 3")]
+    public float timerPerMonthTernak = 3f; 
+
+    [Tooltip("Interval waktu (detik) untuk penambahan otomatis/beranak")]
+    public float intervalBeranakTernak = 10f;
+
+    [Tooltip("Jumlah ekor yang bertambah setiap kali interval waktu habis")]
+    public int jumlahTambahanPerInterval = 2;        
+
+    private int totalEkorSapiInternal = 0;
+    private int totalEkorKambingInternal = 0;
+    private int trackerJumlahSapiToko = 0;
+    private int trackerJumlahKambingToko = 0;
+    private bool isSistemSapiBeranakAktif = false;
+    private bool isSistemKambingBeranakAktif = false;
 
     private int currentHaulMonth = 0;
     private bool isNisabReached = false;
@@ -56,13 +89,21 @@ public class JurnalManager : MonoBehaviour
     private bool isNotificationShown = false;
     private bool isDagangCoroutineRunning = false;
 
-    // --- MODIFIKASI BARU: State Kunci, Haul, & Notifikasi Babak 2 ---
     private int currentHaulMonthEmasPerak = 0;
     private bool isEmasPerakNisabReached = false;
     private bool isEmasPerakHaulComplete = false;
     private bool isEmasPerakUnlocked = false;
     private bool isEmasPerakNotificationShown = false;
     private bool isEmasPerakCoroutineRunning = false;
+
+    // State Logic untuk Halaman 3 (Zakat Ternak)
+    private int currentHaulMonthTernak = 0;
+    private bool isTernakNisabReached = false;
+    private bool isTernakHaulComplete = false;
+    private bool isTernakUnlocked = false;
+    private bool isTernakNotificationShown = false;
+    private bool isTernakCoroutineRunning = false;
+
     void Awake() { instance = this; }
 
     void Start()
@@ -71,11 +112,14 @@ public class JurnalManager : MonoBehaviour
         asetBlur.SetActive(false);
         if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(false);
         
-        // --- MODIFIKASI BARU: Di awal game, set visual halaman 2 ke kondisi Terkunci ---
         if (visualHalamanLock != null) visualHalamanLock.SetActive(true);
         if (visualHalamanUnlock != null) visualHalamanUnlock.SetActive(false);
         
-        ShowPage(1);
+        if (panelLockTernak != null) panelLockTernak.SetActive(true);
+        if (panelUnlockTernak != null) panelUnlockTernak.SetActive(false);
+        
+        currentPage = 1;
+        ShowPage(currentPage);
         
         checkNisab.SetActive(false);
         checkHaul.SetActive(false);
@@ -86,7 +130,6 @@ public class JurnalManager : MonoBehaviour
         haulSlider.value = 0;
         messageText.SetActive(false);
         
-        // --- MODIFIKASI BARU: Reset Visual Page 2 ---
         if (checkNisabEmasPerak != null) checkNisabEmasPerak.SetActive(false);
         if (checkHaulEmasPerak != null) checkHaulEmasPerak.SetActive(false);
         if (checkZakatEmasPerak != null) checkZakatEmasPerak.SetActive(false);
@@ -98,13 +141,26 @@ public class JurnalManager : MonoBehaviour
             haulSliderEmasPerak.maxValue = 12;
             haulSliderEmasPerak.value = 0;
         }
+
+        if (checkNisabTernak != null) checkNisabTernak.SetActive(false);
+        if (checkHaulTernak != null) checkHaulTernak.SetActive(false);
+        if (checkZakatTernak != null) checkZakatTernak.SetActive(false);
+        if (messageTextTernak != null) messageTextTernak.SetActive(false);
+        
+        if (haulSliderTernak != null)
+        {
+            haulSliderTernak.minValue = 0;
+            haulSliderTernak.maxValue = 12;
+            haulSliderTernak.value = 0;
+        }
         
         UpdateStatusUI();
         UpdateEmasPerakStatusUI();
+        UpdateTernakStatusUI();
 
         btnClose.onClick.AddListener(CloseJurnal);
-        btnNext.onClick.AddListener(() => ShowPage(2));
-        btnPrevious.onClick.AddListener(() => ShowPage(1));
+        btnNext.onClick.AddListener(NextPage);
+        btnPrevious.onClick.AddListener(PreviousPage);
     }
 
     void Update()
@@ -120,19 +176,19 @@ public class JurnalManager : MonoBehaviour
                 StartZakatLogic();
             }
 
-            // --- MODIFIKASI BARU: LOGIKA HALAMAN 2 (EMAS & PERAK) ---
-            // Update teks gramasi emas dan perak secara realtime dari MoneyManager
+            // --- LOGIKA HALAMAN 2 (EMAS & PERAK) ---
             if (txtHartaEmas != null) txtHartaEmas.text = MoneyManager.instance.totalEmas.ToString() + " gram";
             if (txtHartaPerak != null) txtHartaPerak.text = MoneyManager.instance.totalPerak.ToString() + " gram";
 
-            // Jalankan pengecekan kriteria pemenuhan nisab emas atau perak
             CheckEmasPerakNisab();
         }
+
+        // --- LOGIKA HALAMAN 3: UNLOCK & HITUNG DATA TERNAK ---
+        CheckLevel3TernakUnlock();
     }
 
     public void StartZakatLogic() {
         if (isNisabReached) return;
-
         isNisabReached = true;
 
         if (checkNisab != null) checkNisab.SetActive(true);
@@ -142,7 +198,6 @@ public class JurnalManager : MonoBehaviour
             ikonNotifikasiJurnal.SetActive(true);
         }
         
-        // 🔥 PERBAIKAN: Jangan pakai StopAllCoroutines() lagi agar tidak membunuh slider lain
         if (!isDagangCoroutineRunning)
         {
             StartCoroutine(HaulTimerRoutine());
@@ -150,7 +205,7 @@ public class JurnalManager : MonoBehaviour
     }
 
     IEnumerator HaulTimerRoutine() {
-        isDagangCoroutineRunning = true; // 🔥 Kunci coroutine aktif
+        isDagangCoroutineRunning = true; 
         currentHaulMonth = 0;
         isHaulComplete = false;
 
@@ -171,12 +226,11 @@ public class JurnalManager : MonoBehaviour
         if (checkHaul != null) checkHaul.SetActive(true);
         UpdateStatusUI(); 
         
-        isDagangCoroutineRunning = false; // ✅ Buka kunci saat selesai
+        isDagangCoroutineRunning = false; 
     }
 
-    // --- MODIFIKASI BARU: Coroutine Timer Haul khusus untuk Emas & Perak ---
     IEnumerator HaulTimerEmasPerakRoutine() {
-        isEmasPerakCoroutineRunning = true; // 🔥 Kunci Coroutine menyala
+        isEmasPerakCoroutineRunning = true; 
         currentHaulMonthEmasPerak = 0;
         isEmasPerakHaulComplete = false;
 
@@ -197,23 +251,75 @@ public class JurnalManager : MonoBehaviour
         if (checkHaulEmasPerak != null) checkHaulEmasPerak.SetActive(true);
         UpdateEmasPerakStatusUI(); 
         
-        isEmasPerakCoroutineRunning = false; // ✅ Lepas kunci saat selesai
+        isEmasPerakCoroutineRunning = false; 
+    }
+
+    // Coroutine Timer Haul khusus untuk Zakat Ternak Halaman 3
+    IEnumerator HaulTimerTernakRoutine() {
+        isTernakCoroutineRunning = true;
+        currentHaulMonthTernak = 0;
+        isTernakHaulComplete = false;
+
+        while (currentHaulMonthTernak < 12) {
+            float timer = 0;
+            while (timer < timerPerMonthTernak) { 
+                timer += Time.deltaTime;
+                if (haulSliderTernak != null) {
+                    haulSliderTernak.value = currentHaulMonthTernak + (timer / timerPerMonthTernak);
+                }
+                yield return null;
+            }
+            currentHaulMonthTernak++;
+            haulSliderTernak.value = currentHaulMonthTernak;
+        }
+
+        isTernakHaulComplete = true;
+        if (checkHaulTernak != null) checkHaulTernak.SetActive(true);
+        UpdateTernakStatusUI();
+
+        isTernakCoroutineRunning = false;
+    }
+
+    void NextPage()
+    {
+        if (currentPage < 3)
+        {
+            currentPage++;
+            ShowPage(currentPage);
+        }
+    }
+
+    void PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            ShowPage(currentPage);
+        }
     }
 
     void ShowPage(int pageNumber)
     {
+        groupZakatPerdagangan.SetActive(false);
+        groupZakatEmasPerak.SetActive(false);
+        groupZakatTernak.SetActive(false);
+
         if (pageNumber == 1)
         {
             groupZakatPerdagangan.SetActive(true);
-            groupZakatEmasPerak.SetActive(false);
             btnNext.gameObject.SetActive(true);
             btnPrevious.gameObject.SetActive(false);
         }
-        else
+        else if (pageNumber == 2)
         {
-            groupZakatPerdagangan.SetActive(false);
             groupZakatEmasPerak.SetActive(true);
-            btnNext.gameObject.SetActive(false);
+            btnNext.gameObject.SetActive(true);
+            btnPrevious.gameObject.SetActive(true);
+        }
+        else if (pageNumber == 3)
+        {
+            groupZakatTernak.SetActive(true);
+            btnNext.gameObject.SetActive(false); 
             btnPrevious.gameObject.SetActive(true);
         }
     }
@@ -228,7 +334,6 @@ public class JurnalManager : MonoBehaviour
             
             if (zakatManager != null)
             {
-                // AKTIFKAN KUNCI
                 zakatManager.isPerdaganganUnlocked = true;
                 zakatManager.UpdateItemVisuals();
             }
@@ -245,7 +350,6 @@ public class JurnalManager : MonoBehaviour
             
             if (zakatManager != null)
             {
-                // --- TAMBAHKAN INI UNTUK MENGUNCI KEMBALI JIKA BELUM WAJIB ZAKAT ---
                 zakatManager.isPerdaganganUnlocked = false;
                 zakatManager.UpdateItemVisuals();
             }
@@ -256,7 +360,6 @@ public class JurnalManager : MonoBehaviour
     {
         if (isEmasPerakNisabReached && isEmasPerakHaulComplete)
         {
-            // Deteksi teks dinamis berdasarkan logam mana yang tembus target kriteria
             int emasSekarang = MoneyManager.instance != null ? MoneyManager.instance.totalEmas : 0;
             int perakSekarang = MoneyManager.instance != null ? MoneyManager.instance.totalPerak : 0;
 
@@ -272,7 +375,7 @@ public class JurnalManager : MonoBehaviour
             
             if (zakatManager != null)
             {
-                zakatManager.isEmasPerakUnlocked = true; // Buka akses tombol di carousel manager
+                zakatManager.isEmasPerakUnlocked = true; 
                 zakatManager.UpdateItemVisuals();
             }
             if (!isEmasPerakNotificationShown && !jurnalContent.activeSelf) {
@@ -294,7 +397,51 @@ public class JurnalManager : MonoBehaviour
         }
     }
 
-    // --- MODIFIKASI BARU: Logika pengecekan akumulasi Nisab Salah Satu Emas / Perak ---
+    void UpdateTernakStatusUI()
+    {
+        if (isTernakNisabReached && isTernakHaulComplete)
+        {
+            int sapiSekarang = GetJumlahSapiRealTime();
+            int kambingSekarang = GetJumlahKambingRealTime();
+
+            if (sapiSekarang >= nisabSapiKriteria && kambingSekarang >= nisabKambingKriteria)
+                txtTernakStatus.text = "Wajib Zakat Sapi & Kambing";
+            else if (sapiSekarang >= nisabSapiKriteria)
+                txtTernakStatus.text = "Wajib Zakat Sapi";
+            else if (kambingSekarang >= nisabKambingKriteria)
+                txtTernakStatus.text = "Wajib Zakat Kambing";
+            else
+                txtTernakStatus.text = "Wajib Zakat Ternak"; 
+
+            txtTernakStatus.color = Color.black;
+            if (messageTextTernak != null) messageTextTernak.SetActive(true);
+
+            if (zakatManager != null)
+            {
+                zakatManager.isPeternakanUnlocked = true; 
+                zakatManager.UpdateItemVisuals();
+            }
+
+            if (!isTernakNotificationShown && !jurnalContent.activeSelf)
+            {
+                if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(true);
+                isTernakNotificationShown = true;
+            }
+        }
+        else
+        {
+            txtTernakStatus.text = "Belum Wajib Zakat";
+            txtTernakStatus.color = Color.gray;
+            if (messageTextTernak != null) messageTextTernak.SetActive(false);
+
+            if (zakatManager != null)
+            {
+                zakatManager.isPeternakanUnlocked = false;
+                zakatManager.UpdateItemVisuals();
+            }
+        }
+    }
+
     public void CheckEmasPerakNisab() 
     {
         if (MoneyManager.instance == null) return;
@@ -319,7 +466,6 @@ public class JurnalManager : MonoBehaviour
                 }
             }
 
-            // Memicu siklus logika checklist & slider haul halaman 2
             if (!isEmasPerakNisabReached)
             {
                 isEmasPerakNisabReached = true;
@@ -331,13 +477,138 @@ public class JurnalManager : MonoBehaviour
                     ikonNotifikasiJurnal.SetActive(true);
                 }
 
-                // 🔥 PERBAIKAN CRITICAL: Hanya jalankan jika coroutine BELUM berjalan!
                 if (!isEmasPerakCoroutineRunning)
                 {
                     StartCoroutine(HaulTimerEmasPerakRoutine());
                 }
             }
         } 
+    }
+
+    private void CheckLevel3TernakUnlock()
+    {
+        bool sudahLevel3 = (Level3Manager.instance != null) && Level3Manager.instance.isBabak3Aktif;
+
+        if (sudahLevel3)
+        {
+            if (!isTernakUnlocked)
+            {
+                isTernakUnlocked = true;
+
+                if (panelLockTernak != null) panelLockTernak.SetActive(false);
+                if (panelUnlockTernak != null) panelUnlockTernak.SetActive(true);
+            }
+
+            // Selalu perbarui teks jumlah kuantitas sapi dan kambing secara berkala
+            int sapiSekarang = GetJumlahSapiRealTime();
+            int kambingSekarang = GetJumlahKambingRealTime();
+
+            if (txtHartaSapi != null) txtHartaSapi.text = sapiSekarang.ToString() + " Ekor";
+            if (txtHartaKambing != null) txtHartaKambing.text = kambingSekarang.ToString() + " Ekor";
+
+            // 🔥 LOGIKA BARU: Jika SUDAH ADA ternak (pembelian pertama sukses), langsung nyalakan timer Haul!
+            if (sapiSekarang > 0 || kambingSekarang > 0)
+            {
+                if (!isTernakCoroutineRunning && !isTernakHaulComplete)
+                {
+                    StartCoroutine(HaulTimerTernakRoutine());
+                }
+            }
+
+            // 🔥 EVALUASI NISAB SECARA REAL-TIME: Centang nisab baru menyala jika angka ternak menyentuh batas kriteria
+            if (sapiSekarang >= nisabSapiKriteria || kambingSekarang >= nisabKambingKriteria)
+            {
+                if (!isTernakNisabReached)
+                {
+                    isTernakNisabReached = true;
+                    if (checkNisabTernak != null) checkNisabTernak.SetActive(true);
+                    if (checkZakatTernak != null) checkZakatTernak.SetActive(true);
+
+                    if (ikonNotifikasiJurnal != null && !jurnalContent.activeSelf)
+                    {
+                        ikonNotifikasiJurnal.SetActive(true);
+                    }
+                    
+                    // Update status UI untuk mengecek apakah Haul juga sudah selesai
+                    UpdateTernakStatusUI();
+                }
+            }
+        }
+    }
+
+    private int GetJumlahSapiRealTime()
+    {
+        if (TokoManager.instance != null)
+        {
+            int sapiDariToko = (int)System.Type.GetType("TokoManager").GetField("jumlahSapiDibeli", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(TokoManager.instance);
+            
+            if (sapiDariToko > trackerJumlahSapiToko)
+            {
+                int selisihBeli = sapiDariToko - trackerJumlahSapiToko;
+                totalEkorSapiInternal += (selisihBeli * 10); 
+                trackerJumlahSapiToko = sapiDariToko;
+
+                // 🔥 Pemicu mandiri khusus Sapi
+                if (!isSistemSapiBeranakAktif) StartCoroutine(SistemSapiBeranakRoutine());
+            }
+        }
+        return totalEkorSapiInternal; 
+    }
+
+    private int GetJumlahKambingRealTime()
+    {
+        if (TokoManager.instance != null)
+        {
+            int kambingDariToko = (int)System.Type.GetType("TokoManager").GetField("jumlahKambingDibeli", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(TokoManager.instance);
+            
+            if (kambingDariToko > trackerJumlahKambingToko)
+            {
+                int selisihBeli = kambingDariToko - trackerJumlahKambingToko;
+                totalEkorKambingInternal += (selisihBeli * 10); 
+                trackerJumlahKambingToko = kambingDariToko;
+
+                // 🔥 Pemicu mandiri khusus Kambing
+                if (!isSistemKambingBeranakAktif) StartCoroutine(SistemKambingBeranakRoutine());
+            }
+        }
+        return totalEkorKambingInternal; 
+    }
+
+    // 🔥 COROUTINE KHUSUS SAPI (Ikut waktu interval di Inspector, misal: 10 detik)
+    // 🔥 COROUTINE KHUSUS SAPI: Setiap 5 detik bertambah 5 ekor
+    IEnumerator SistemSapiBeranakRoutine()
+    {
+        isSistemSapiBeranakAktif = true;
+
+        while (true)
+        {
+            yield return new WaitForSeconds(5f); // 5 Detik
+
+            if (totalEkorSapiInternal > 0 && totalEkorSapiInternal < 50)
+            {
+                totalEkorSapiInternal += 5; // Beranak 5 ekor!
+                if (totalEkorSapiInternal > 50) totalEkorSapiInternal = 50; 
+                Debug.Log($"<color=white>[Jurnal Ternak]</color> Sapi melahirkan! Jumlah sekarang: {totalEkorSapiInternal} ekor.");
+            }
+        }
+    }
+
+    // 🔥 COROUTINE KHUSUS KAMBING: Setiap 7 detik bertambah 2 ekor
+    IEnumerator SistemKambingBeranakRoutine()
+    {
+        isSistemKambingBeranakAktif = true;
+
+        while (true)
+        {
+            yield return new WaitForSeconds(7f); // 7 Detik
+
+            if (totalEkorKambingInternal > 0 && totalEkorKambingInternal < 50)
+            {
+                totalEkorKambingInternal += 2; // Beranak 2 ekor!
+                if (totalEkorKambingInternal > 50) totalEkorKambingInternal = 50; 
+                Debug.Log($"<color=orange>[Jurnal Ternak]</color> Kambing melahirkan! Jumlah sekarang: {totalEkorKambingInternal} ekor.");
+            }
+        }
     }
 
     public void OpenJurnal() 
@@ -352,8 +623,6 @@ public class JurnalManager : MonoBehaviour
         }
 
         if (asetBlur != null) asetBlur.SetActive(true);
-
-        // SAAT JURNAL DIBUKA: Matikan ikon notifikasi (tanda sudah dibaca)
         if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(false);
     }
 
@@ -378,13 +647,11 @@ public class JurnalManager : MonoBehaviour
 
     public bool IsEmasPerakUnlocked()
     {
-        // Kembalikan status final apakah haul & kuis emas/perak sudah terbuka sepenuhnya
         return isEmasPerakNisabReached && isEmasPerakHaulComplete; 
     }
 
     public bool IsPeternakanUnlocked()
     {
-        return false; // nanti kamu isi sendiri
+        return isTernakNisabReached && isTernakHaulComplete; 
     }
-    // Tambahkan ini di dalam class ZakatPanelManager : MonoBehaviour
 }

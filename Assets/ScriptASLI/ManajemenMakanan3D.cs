@@ -11,6 +11,11 @@ public class ManajemenMakanan3D : MonoBehaviour
     [SerializeField] private GameObject btnMasukinPakan; // Tombol awal (saat pakan kosong)
     [SerializeField] private GameObject btnIsiUlang;     // Tombol saat makanan habis
 
+    // ====== TAMBAHAN BARU UNTUK POP-UP ======
+    [Header("UI Pop-up Peringatan (2D Canvas)")]
+    [SerializeField] private GameObject panelPakanHabisPopUp; 
+    // ========================================
+
     [Header("Pengaturan Waktu (Detik)")]
     [SerializeField] private float waktuMakanTotal = 10f; 
 
@@ -21,6 +26,8 @@ public class ManajemenMakanan3D : MonoBehaviour
     void Start()
     {
         SetPakanAwalKosong();
+        // Pastikan pop-up tertutup saat game mulai
+        if (panelPakanHabisPopUp != null) panelPakanHabisPopUp.SetActive(false);
     }
 
     void Update()
@@ -65,6 +72,40 @@ public class ManajemenMakanan3D : MonoBehaviour
         if (btnIsiUlang != null) btnIsiUlang.SetActive(false);
     }
 
+    public void MasukinPakanPertama()
+    {
+        if (InventoryManager.instance != null && InventoryManager.instance.GunakanPakanDiWorld())
+        {
+            MulaiSapiMakan();
+            Debug.Log("[PakanSapi] Player memasukkan pakan. Sisa di inventory: " + InventoryManager.instance.pakanRumputCount);
+        }
+        else
+        {
+            Debug.LogWarning("[PakanSapi] Gagal memberi makan! Pakan di Inventory HABIS.");
+            
+            // 🔥 MODIFIKASI: Munculkan Panel Pop-up 2D
+            TampilkanPopUpPakanHabis();
+        }
+        if (TaskManager.instance != null) TaskManager.instance.NotifyIsiPakanWorld3D();
+    }
+
+    public void IsiUlangMakananHabis()
+    {
+        if (InventoryManager.instance != null && InventoryManager.instance.GunakanPakanDiWorld())
+        {
+            MulaiSapiMakan();
+            Debug.Log("[PakanSapi] Player mengisi ulang pakan. Sisa di inventory: " + InventoryManager.instance.pakanRumputCount);
+        }
+        else
+        {
+            Debug.LogWarning("[PakanSapi] Gagal isi ulang! Pakan di Inventory HABIS.");
+            
+            // 🔥 MODIFIKASI: Munculkan Panel Pop-up 2D
+            TampilkanPopUpPakanHabis();
+        }
+        if (TaskManager.instance != null) TaskManager.instance.NotifyIsiPakanWorld3D();
+    }
+
     private void SetMakananHabis()
     {
         makananHabis = true;
@@ -74,46 +115,14 @@ public class ManajemenMakanan3D : MonoBehaviour
         if (btnIsiUlang != null) btnIsiUlang.SetActive(true);
 
         Debug.Log("Makanan sapi telah habis! Tombol Isi Ulang Muncul.");
+
+        // 🔥 HUBUNGKAN KE REMINDER: Pemicu kakek mulai muncul berulang
+        if (ReminderManager.instance != null)
+        {
+            ReminderManager.instance.TriggerPakanHabisReminder(true);
+        }
     }
 
-    // =================================================================
-// COMMAND KHUSUS MASUKIN PAKAN (Tombol Pertama)
-// =================================================================
-    public void MasukinPakanPertama()
-    {
-        // Cek ke inventory, jika pakan ada dan berhasil dikurangi 1x
-        if (InventoryManager.instance != null && InventoryManager.instance.GunakanPakanDiWorld())
-        {
-            MulaiSapiMakan();
-            Debug.Log("[PakanSapi] Player memasukkan pakan. Sisa di inventory: " + InventoryManager.instance.pakanRumputCount);
-        }
-        else
-        {
-            Debug.LogWarning("[PakanSapi] Gagal memberi makan! Pakan di Inventory HABIS. Silakan beli di toko.");
-            // Opsi tambahan: kamu bisa munculin pop-up tulisan "Pakan Habis!" di layar di sini
-        }
-        if (TaskManager.instance != null) TaskManager.instance.NotifyIsiPakanWorld3D();
-    }
-
-    // =================================================================
-    // COMMAND KHUSUS ISI ULANG (Tombol Kedua)
-    // =================================================================
-    public void IsiUlangMakananHabis()
-    {
-        // Logikanya sama, potong 1 kuota pakan lagi dari inventory untuk isi ulang
-        if (InventoryManager.instance != null && InventoryManager.instance.GunakanPakanDiWorld())
-        {
-            MulaiSapiMakan();
-            Debug.Log("[PakanSapi] Player mengisi ulang pakan. Sisa di inventory: " + InventoryManager.instance.pakanRumputCount);
-        }
-        else
-        {
-            Debug.LogWarning("[PakanSapi] Gagal isi ulang! Pakan di Inventory HABIS.");
-        }
-        if (TaskManager.instance != null) TaskManager.instance.NotifyIsiPakanWorld3D();
-    }
-
-    // Fungsi pembantu internal untuk menyatukan logika reset visual & waktu
     private void MulaiSapiMakan()
     {
         waktuBerjalan = 0f;
@@ -122,8 +131,30 @@ public class ManajemenMakanan3D : MonoBehaviour
 
         GantiVisual(daunFase1Penuh);
 
-        // Sembunyikan kedua tombol di dunia saat pakan sedang tersedia
         if (btnMasukinPakan != null) btnMasukinPakan.SetActive(false);
         if (btnIsiUlang != null) btnIsiUlang.SetActive(false);
+
+        // 🔥 HUBUNGKAN KE REMINDER: Hentikan kakek karena pakan sudah diisi ulang
+        if (ReminderManager.instance != null)
+        {
+            ReminderManager.instance.TriggerPakanHabisReminder(false);
+        }
+    }
+
+    // ====== FUNGSI BARU UNTUK KONTROL POP-UP (BISA DIPANGGIL DARI TOMBOL SILANG) ======
+    public void TampilkanPopUpPakanHabis()
+    {
+        if (panelPakanHabisPopUp != null)
+        {
+            panelPakanHabisPopUp.SetActive(true);
+        }
+    }
+
+    public void TutupPopUpPakanHabis()
+    {
+        if (panelPakanHabisPopUp != null)
+        {
+            panelPakanHabisPopUp.SetActive(false);
+        }
     }
 }

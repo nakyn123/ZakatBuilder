@@ -27,6 +27,13 @@ public class ReminderManager : MonoBehaviour
     private bool hasShownTutorialTernak = false;
     private string pesanTutorial1 = "Sapi dan kambing yang kamu beli ini bisa beranak loh.";
     private string pesanTutorial2 = "Maka dari itu rajinlah memberinya makan agar ia tumbuh sehat.";
+    // 🔥 TAMBAHAN BARU: Variabel kontrol untuk pengingat jual kayu
+    private bool hasShownJualKayuReminder = false;
+    private string pesanJualKayu = "Aset kayu kamu sudah banyak, jangan lupa dijual untuk menghasilkan uang ya!";
+    // 🔥 TAMBAHAN BARU: Variabel kontrol untuk pengingat konversi aset emas perak
+    private bool hasShownKonversiAsetReminder = false;
+    private string pesanKonversi1 = "Emas dan perak yang kamu temukan sebelumnya sudah dikonversi menjadi aset,";
+    private string pesanKonversi2 = "Kamu bisa menjualnya kapan saja untuk menghasilkan uang.";
 
     private void Awake()
     {
@@ -238,5 +245,132 @@ public class ReminderManager : MonoBehaviour
         bool carouselZakatBuka = (ZakatPanelManager.instance != null && ZakatPanelManager.instance.zakatCarouselPanel.activeSelf);
 
         return tokoBuka || jurnalBuka || misiBuka || carouselZakatBuka;
+    }
+    // 🔥 FUNGSI BARU: Dipanggil dari TaskManager saat tebang pohon menyentuh angka 15
+    public void TriggerJualKayuReminder()
+    {
+        if (!hasShownJualKayuReminder)
+        {
+            hasShownJualKayuReminder = true;
+            StartCoroutine(JualKayuReminderSequence());
+        }
+    }
+
+    private IEnumerator JualKayuReminderSequence()
+    {
+        // Tunggu sampai tidak ada panel UI apapun yang sedang terbuka di layar
+        while (IsAnyPanelOpen()) yield return null;
+
+        yield return new WaitForSeconds(0.5f); // Jeda sejenak biar natural
+
+        textMessage.text = "";
+        bubbleObject.SetActive(false);
+
+        // Kakek bergerak naik ke atas layar
+        while (Vector2.Distance(kakekTransform.anchoredPosition, kakekShownPos) > 0.1f)
+        {
+            kakekTransform.anchoredPosition = Vector2.MoveTowards(kakekTransform.anchoredPosition, kakekShownPos, speedKakek * Time.deltaTime);
+            yield return null;
+        }
+        kakekTransform.anchoredPosition = kakekShownPos;
+
+        // Munculkan bubble percakapan
+        bubbleObject.SetActive(true);
+
+        // Efek ketik teks pesan satu persatu
+        foreach (char letter in pesanJualKayu.ToCharArray())
+        {
+            textMessage.text += letter;
+            yield return new WaitForSeconds(typewriterSpeed);
+        }
+
+        // Tunggu selama durasi tertentu agar pemain sempat membaca
+        yield return new WaitForSeconds(durationVisible);
+
+        // Bubble hilang dan kakek turun kembali sembunyi
+        bubbleObject.SetActive(false);
+        textMessage.text = "";
+        while (Vector2.Distance(kakekTransform.anchoredPosition, kakekHiddenPos) > 0.1f)
+        {
+            kakekTransform.anchoredPosition = Vector2.MoveTowards(kakekTransform.anchoredPosition, kakekHiddenPos, speedKakek * Time.deltaTime);
+            yield return null;
+        }
+        kakekTransform.anchoredPosition = kakekHiddenPos;
+    }
+    // 🔥 FUNGSI BARU: Dipanggil dari ZakatEmasPerakPanel saat tombol tutup reward diklik
+    public void TriggerKonversiAsetReminder()
+    {
+        if (!hasShownKonversiAsetReminder)
+        {
+            hasShownKonversiAsetReminder = true;
+            StartCoroutine(KonversiAsetReminderSequence());
+        }
+    }
+
+    private IEnumerator KonversiAsetReminderSequence()
+    {
+        // 1. PENGAMAN: Tunggu sampai seluruh panel UI tertutup rapat
+        while (IsAnyPanelOpen()) yield return null;
+
+        yield return new WaitForSeconds(0.4f); // Jeda sejenak setelah panel tutup biar mulus
+
+        textMessage.text = "";
+        bubbleObject.SetActive(false);
+
+        // 2. Kakek Transisi Bergerak Naik ke atas layar
+        while (Vector2.Distance(kakekTransform.anchoredPosition, kakekShownPos) > 0.1f)
+        {
+            kakekTransform.anchoredPosition = Vector2.MoveTowards(kakekTransform.anchoredPosition, kakekShownPos, speedKakek * Time.deltaTime);
+            yield return null;
+        }
+        kakekTransform.anchoredPosition = kakekShownPos;
+
+        // ==========================================
+        // DIALOG 1 (Emas perak dikonversi jadi aset di tas)
+        // ==========================================
+        bubbleObject.SetActive(true);
+
+        // Efek ketik teks pesan pertama
+        foreach (char letter in pesanKonversi1.ToCharArray())
+        {
+            textMessage.text += letter;
+            yield return new WaitForSeconds(typewriterSpeed);
+        }
+
+        // Durasi teks pertama mejeng di layar agar sempat dibaca
+        yield return new WaitForSeconds(durationVisible * 0.9f); 
+
+        // 3. TRANSISI DIALOG: Bubble hilang seketika & teks direset untuk belahan kedua
+        bubbleObject.SetActive(false);
+        textMessage.text = "";
+        yield return new WaitForSeconds(0.4f); 
+
+        // Cek pengaman kembali sebelum lanjut dialog kedua
+        while (IsAnyPanelOpen()) yield return null;
+
+        // ==========================================
+        // DIALOG 2 (Bisa buka tas dan dijual jadi rupiah)
+        // ==========================================
+        bubbleObject.SetActive(true);
+
+        // Efek ketik teks pesan kedua (Belahan kedua)
+        foreach (char letter in pesanKonversi2.ToCharArray())
+        {
+            textMessage.text += letter;
+            yield return new WaitForSeconds(typewriterSpeed);
+        }
+
+        // Durasi teks kedua mejeng di layar sebelum kakek pamit pulang
+        yield return new WaitForSeconds(durationVisible);
+
+        // 4. Selesai, Bubble hilang dan kakek transisi turun sembunyi kembali
+        bubbleObject.SetActive(false);
+        textMessage.text = "";
+        while (Vector2.Distance(kakekTransform.anchoredPosition, kakekHiddenPos) > 0.1f)
+        {
+            kakekTransform.anchoredPosition = Vector2.MoveTowards(kakekTransform.anchoredPosition, kakekHiddenPos, speedKakek * Time.deltaTime);
+            yield return null;
+        }
+        kakekTransform.anchoredPosition = kakekHiddenPos;
     }
 }

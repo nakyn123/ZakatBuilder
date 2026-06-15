@@ -4,7 +4,6 @@ using System.Collections;
 
 public class ZakatPanelManager : MonoBehaviour
 {
-    // 🔥 TAMBAHKAN LINE INI (Singleton Instance)
     public static ZakatPanelManager instance;
 
     [Header("UI References")]
@@ -32,9 +31,6 @@ public class ZakatPanelManager : MonoBehaviour
     public float transitionSpeed = 10f;
     public float centerScale = 1.2f;
     public float sideScale = 0.5f;
-    
-    // 🔥 PENGATURAN JARAK BARU VIA KODE
-    [Tooltip("Jarak konstan antar item di dalam carousel")]
     public float itemSpacing = 500f; 
 
     private int currentIndex = 2;
@@ -44,6 +40,18 @@ public class ZakatPanelManager : MonoBehaviour
     public bool isPerdaganganUnlocked = false;
     public bool isEmasPerakUnlocked = false;
     public bool isPeternakanUnlocked = false;
+
+    // 🔥 TAMBAHAN BARU: Status tracker apakah zakat sudah pernah diselesaikan/diisi
+    [Header("Status Completion")]
+    public bool isPerdaganganCompleted = false;
+    public bool isEmasPerakCompleted = false;
+    public bool isPeternakanCompleted = false;
+
+    // 🔥 TAMBAHAN BARU: Tarik Game Object Image Centang dari Inspector Unity ke sini
+    [Header("UI Centang / Checkmark Objects")]
+    public GameObject checkmarkPerdagangan;
+    public GameObject checkmarkEmasPerak;
+    public GameObject checkmarkPeternakan;
 
     [Header("Mapping Jurnal -> Item")]
     public int indexPerdagangan = 2;
@@ -71,22 +79,16 @@ public class ZakatPanelManager : MonoBehaviour
         if (asetBlur != null) asetBlur.SetActive(false);
         if (btnClose != null)
         {
-            btnClose.onClick.RemoveAllListeners(); // Bersihkan sisa event lama
-            btnClose.onClick.AddListener(CloseZakatPanel); // Hubungkan ke fungsi penutup HUD yang aman
+            btnClose.onClick.RemoveAllListeners(); 
+            btnClose.onClick.AddListener(CloseZakatPanel); 
         }
     }
 
     public void OpenZakatPanel()
     {
         Debug.Log("[ZakatPanel] Membuka panel zakat.");
-        if (UIManager.instance != null)
-        {
-            UIManager.instance.OpenPanelMenu(zakatCarouselPanel);
-        }
-        else
-        {
-            zakatCarouselPanel.SetActive(true);
-        }
+        if (UIManager.instance != null) UIManager.instance.OpenPanelMenu(zakatCarouselPanel);
+        else zakatCarouselPanel.SetActive(true);
 
         if (asetBlur != null) asetBlur.SetActive(true);
 
@@ -95,41 +97,24 @@ public class ZakatPanelManager : MonoBehaviour
 
         if (movementCoroutine != null) StopCoroutine(movementCoroutine);
 
-        // 🔥 Paksa atur ulang posisi semua item secara matematis di awal agar simetris sempurna
         RepositionItemsDynamically();
-
         UpdateTargetPosition(true);
         UpdateNavButtons();
         UpdatePaymentButtonVisual(); 
+        UpdateCheckmarkVisuals(); // 🔥 Sinkronisasi tanda centang saat dibuka
     }
 
     public void CloseZakatPanel()
     {
-        // --- PANGGIL UIMANAGER UNTUK MUNCULKAN HUD KEMBALI ---
-        if (UIManager.instance != null)
-        {
-            UIManager.instance.ClosePanelMenu(zakatCarouselPanel);
-        }
-        else
-        {
-            zakatCarouselPanel.SetActive(false);
-        }
+        if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(zakatCarouselPanel);
+        else zakatCarouselPanel.SetActive(false);
 
         if (asetBlur != null) asetBlur.SetActive(false);
     }
 
-    // 🔥 FUNGSI BARU: Mengatur posisi X semua element berdasarkan rumus matematika yang adil
     void RepositionItemsDynamically()
     {
         if (items == null || items.Length == 0) return;
-
-        // Kita jadikan element tengah (index 2) sebagai titik nol (0)
-        // Rumus: (index - 2) * spacing
-        // Index 0 -> (0-2) * 500 = -1000
-        // Index 1 -> (1-2) * 500 = -500
-        // Index 2 -> (2-2) * 500 = 0
-        // Index 3 -> (3-2) * 500 = 500
-        // Index 4 -> (4-2) * 500 = 1000
         for (int i = 0; i < items.Length; i++)
         {
             if (items[i] != null)
@@ -140,21 +125,13 @@ public class ZakatPanelManager : MonoBehaviour
         }
     }
 
-    // =================================================================
-    // 🔥 NAVIGASI CAROUSEL
-    // =================================================================
     public void NextItem()
     {
-        Debug.Log($"[ZakatPanel] Tombol Next diklik. Status isMoving: {isMoving}, CurrentIndex: {currentIndex}");
-
         if (isMoving) return;
-
         if (currentIndex < 3)
         {
             currentIndex++;
-            Debug.Log($"[ZakatPanel] Index naik menjadi: {currentIndex}. Memulai pergeseran...");
             UpdateNavButtons();
-            
             if (movementCoroutine != null) StopCoroutine(movementCoroutine);
             movementCoroutine = StartCoroutine(MoveToTargetRoutine());
         }
@@ -162,16 +139,11 @@ public class ZakatPanelManager : MonoBehaviour
 
     public void PreviousItem()
     {
-        Debug.Log($"[ZakatPanel] Tombol Previous diklik. Status isMoving: {isMoving}, CurrentIndex: {currentIndex}");
-
         if (isMoving) return;
-
         if (currentIndex > 1)
         {
             currentIndex--;
-            Debug.Log($"[ZakatPanel] Index turun menjadi: {currentIndex}. Memulai pergeseran...");
             UpdateNavButtons();
-            
             if (movementCoroutine != null) StopCoroutine(movementCoroutine);
             movementCoroutine = StartCoroutine(MoveToTargetRoutine());
         }
@@ -180,7 +152,6 @@ public class ZakatPanelManager : MonoBehaviour
     IEnumerator MoveToTargetRoutine()
     {
         isMoving = true;
-        
         Vector2 startPos = content.anchoredPosition;
         UpdateTargetPosition(false);
 
@@ -190,12 +161,10 @@ public class ZakatPanelManager : MonoBehaviour
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            
             float percent = elapsed / duration;
             float smoothPercent = Mathf.SmoothStep(0f, 1f, percent);
 
             content.anchoredPosition = Vector2.Lerp(startPos, targetPos, smoothPercent);
-            
             HandleScaling(); 
             yield return null;
         }
@@ -203,24 +172,18 @@ public class ZakatPanelManager : MonoBehaviour
         content.anchoredPosition = targetPos;
         HandleScaling(); 
         isMoving = false;
-        
         UpdatePaymentButtonVisual();
     }
 
     void UpdateNavButtons()
     {
-        if (btnPrevious != null)
-            btnPrevious.gameObject.SetActive(currentIndex > 1);
-
-        if (btnNext != null)
-            btnNext.gameObject.SetActive(currentIndex < 3);
+        if (btnPrevious != null) btnPrevious.gameObject.SetActive(currentIndex > 1);
+        if (btnNext != null) btnNext.gameObject.SetActive(currentIndex < 3);
     }
 
     void UpdateTargetPosition(bool instant)
     {
         if (items.Length == 0 || items[currentIndex] == null) return;
-
-        // Target koordinat X mengikuti posisi dinamis yang baru saja dihitung
         float targetX = -items[currentIndex].localPosition.x;
         targetPos = new Vector2(targetX, content.anchoredPosition.y);
 
@@ -237,7 +200,7 @@ public class ZakatPanelManager : MonoBehaviour
     }
 
     // =================================================================
-    // 🔥 MANAGEMENT VISUAL BUTTON 3D & SKALA CAROUSEL
+    // 🔥 PERBAIKAN LOGIKA WARNA (GELAP JIKA KUNCI / SUDAH SELESAI)
     // =================================================================
     void HandleScaling()
     {
@@ -263,9 +226,28 @@ public class ZakatPanelManager : MonoBehaviour
             {
                 Color baseColor = Color.white;
 
-                if (i == indexPerdagangan) baseColor = (jurnalManager != null ? jurnalManager.IsPerdaganganUnlocked() : isPerdaganganUnlocked) ? Color.white : new Color(0.2f, 0.2f, 0.2f, 1f);
-                else if (i == indexEmasPerak) baseColor = (jurnalManager != null && jurnalManager.IsEmasPerakUnlocked()) ? Color.white : new Color(0.2f, 0.2f, 0.2f, 1f);
-                else if (i == indexPeternakan) baseColor = (jurnalManager != null && jurnalManager.IsPeternakanUnlocked()) ? Color.white : new Color(0.2f, 0.2f, 0.2f, 1f);
+                // Cek status masing-masing halaman carousel
+                if (i == indexPerdagangan)
+                {
+                    bool unlocked = (jurnalManager != null ? jurnalManager.IsPerdaganganUnlocked() : isPerdaganganUnlocked);
+                    // 🔥 MODIFIKASI: Jika terkunci ATAU sudah komplit, buat warnanya hitam/gelap
+                    if (!unlocked || isPerdaganganCompleted) baseColor = new Color(0.2f, 0.2f, 0.2f, 1f);
+                    else baseColor = Color.white;
+                }
+                else if (i == indexEmasPerak)
+                {
+                    bool unlocked = (jurnalManager != null && jurnalManager.IsEmasPerakUnlocked());
+                    // 🔥 MODIFIKASI: Jika terkunci ATAU sudah komplit, buat warnanya hitam/gelap
+                    if (!unlocked || isEmasPerakCompleted) baseColor = new Color(0.2f, 0.2f, 0.2f, 1f);
+                    else baseColor = Color.white;
+                }
+                else if (i == indexPeternakan)
+                {
+                    bool unlocked = (jurnalManager != null && jurnalManager.IsPeternakanUnlocked());
+                    // 🔥 MODIFIKASI: Jika terkunci ATAU sudah komplit, buat warnanya hitam/gelap
+                    if (!unlocked || isPeternakanCompleted) baseColor = new Color(0.2f, 0.2f, 0.2f, 1f);
+                    else baseColor = Color.white;
+                }
 
                 if (i == 0 || i == 4) baseColor.a = 0f; 
                 else baseColor.a = 1f;
@@ -275,30 +257,76 @@ public class ZakatPanelManager : MonoBehaviour
         }
     }
 
+    public void UpdateCheckmarkVisuals()
+    {
+        if (checkmarkPerdagangan != null) checkmarkPerdagangan.SetActive(isPerdaganganCompleted);
+        if (checkmarkEmasPerak != null) checkmarkEmasPerak.SetActive(isEmasPerakCompleted);
+        if (checkmarkPeternakan != null) checkmarkPeternakan.SetActive(isPeternakanCompleted);
+
+        // Paksa sistem untuk langsung merubah warna panel (menghitam/terang) saat ini juga
+        HandleScaling(); 
+    }
+
     public void UpdatePaymentButtonVisual()
     {
         if (btnBayarZakat == null) return;
 
         bool currentUnlocked = false;
-        if (currentIndex == indexPerdagangan) currentUnlocked = (jurnalManager != null) ? jurnalManager.IsPerdaganganUnlocked() : isPerdaganganUnlocked;
-        else if (currentIndex == indexEmasPerak) currentUnlocked = (jurnalManager != null) ? jurnalManager.IsEmasPerakUnlocked() : isEmasPerakUnlocked; 
-        else if (currentIndex == indexPeternakan) currentUnlocked = (jurnalManager != null) ? jurnalManager.IsPeternakanUnlocked() : isPeternakanUnlocked;
+        bool currentCompleted = false;
+
+        if (currentIndex == indexPerdagangan)
+        {
+            currentUnlocked = (jurnalManager != null) ? jurnalManager.IsPerdaganganUnlocked() : isPerdaganganUnlocked;
+            currentCompleted = isPerdaganganCompleted;
+        }
+        else if (currentIndex == indexEmasPerak)
+        {
+            currentUnlocked = (jurnalManager != null) ? jurnalManager.IsEmasPerakUnlocked() : isEmasPerakUnlocked;
+            currentCompleted = isEmasPerakCompleted;
+        } 
+        else if (currentIndex == indexPeternakan)
+        {
+            currentUnlocked = (jurnalManager != null) ? jurnalManager.IsPeternakanUnlocked() : isPeternakanUnlocked;
+            currentCompleted = isPeternakanCompleted;
+        }
 
         Renderer objRenderer = btnBayarZakat.GetComponent<Renderer>();
         if (objRenderer == null) objRenderer = btnBayarZakat.GetComponentInChildren<Renderer>();
 
         if (objRenderer != null)
         {
-            objRenderer.material.color = currentUnlocked ? Color.white : new Color(0.3f, 0.3f, 0.3f, 1f);
+            // Tombol 3D menyala putih HANYA jika sudah unlocked DAN belum dikerjakan (belum completed)
+            objRenderer.material.color = (currentUnlocked && !currentCompleted) ? Color.white : new Color(0.3f, 0.3f, 0.3f, 1f);
         }
     }
 
     public void TriggerZakatAction()
     {
         bool currentUnlocked = false;
-        if (currentIndex == indexPerdagangan) currentUnlocked = (jurnalManager != null) ? jurnalManager.IsPerdaganganUnlocked() : isPerdaganganUnlocked;
-        else if (currentIndex == indexEmasPerak) currentUnlocked = (jurnalManager != null) ? jurnalManager.IsEmasPerakUnlocked() : isEmasPerakUnlocked;
-        else if (currentIndex == indexPeternakan) currentUnlocked = (jurnalManager != null) ? jurnalManager.IsPeternakanUnlocked() : isPeternakanUnlocked;
+        bool currentCompleted = false;
+
+        if (currentIndex == indexPerdagangan)
+        {
+            currentUnlocked = (jurnalManager != null) ? jurnalManager.IsPerdaganganUnlocked() : isPerdaganganUnlocked;
+            currentCompleted = isPerdaganganCompleted;
+        }
+        else if (currentIndex == indexEmasPerak)
+        {
+            currentUnlocked = (jurnalManager != null) ? jurnalManager.IsEmasPerakUnlocked() : isEmasPerakUnlocked;
+            currentCompleted = isEmasPerakCompleted;
+        }
+        else if (currentIndex == indexPeternakan)
+        {
+            currentUnlocked = (jurnalManager != null) ? jurnalManager.IsPeternakanUnlocked() : isPeternakanUnlocked;
+            currentCompleted = isPeternakanCompleted;
+        }
+
+        // 🔥 MODIFIKASI: Kunci akses jika sudah pernah diselesaikan
+        if (currentCompleted)
+        {
+            Debug.Log("[ZakatPanel] Kamu sudah menunaikan zakat ini!");
+            return;
+        }
 
         if (currentUnlocked)
         {
@@ -306,12 +334,11 @@ public class ZakatPanelManager : MonoBehaviour
         }
         else
         {
-            Debug.Log("[ZakatPanel] maaf selesaikan dulu level zakat pertama.");
+            Debug.Log("[ZakatPanel] Maaf, selesaikan dulu kriteria syarat atau tingkatan level zakat.");
         }
     }
 
     public int GetCurrentIndex() { return currentIndex; }
-    public void UpdateItemVisuals() { UpdatePaymentButtonVisual(); }
+    public void UpdateItemVisuals() { UpdatePaymentButtonVisual(); UpdateCheckmarkVisuals(); }
     public void UpdatePaymentButton() { UpdatePaymentButtonVisual(); }
-    // Tambahkan ini di dalam class ZakatPanelManager : MonoBehaviour
 }

@@ -4,8 +4,12 @@ using UnityEngine.UI;
 public class ZakatContentButton : MonoBehaviour
 {
     [Header("Settings")]
-    public GameObject targetPanel; // Taruh prefab/GameObject panel perdagangan di sini
-    public int itemIndex; // Index item ini di carousel (misal: 2 untuk perdagangan)
+    public GameObject targetPanel; 
+    public int itemIndex; 
+
+    [Header("Audio Settings - Tambahan")]
+    public AudioSource audioSourceZakat; // Tarik AudioSource ke sini
+    public AudioClip suaraKlikBukaZakat;  // Tarik SFX klik sukses membuka panel zakat
 
     private Button btn;
     private ZakatPanelManager manager;
@@ -23,24 +27,33 @@ public class ZakatContentButton : MonoBehaviour
 
     void OnButtonClick()
     {
-        // Hanya bisa diklik jika item ini sedang berada di tengah (fokus)
         if (manager != null && manager.GetCurrentIndex() == itemIndex)
         {
-            // --- 1. VALIDASI KUNCI UNTUK PERDAGANGAN ---
-            if (itemIndex == manager.indexPerdagangan && !manager.isPerdaganganUnlocked)
+            // --- 1. VALIDASI PERDAGANGAN ---
+            if (itemIndex == manager.indexPerdagangan)
             {
-                Debug.Log("Konten terkunci! Belum memenuhi kriteria Wajib Zakat Perdagangan.");
-                return; 
+                // Hapus syarat completed-nya biar bisa diklik terus buat testing
+                if (!manager.isPerdaganganUnlocked) return; 
             }
 
-            // --- 2. VALIDASI KUNCI UNTUK EMAS & PERAK (TAMBAHAN BARU) ---
-            if (itemIndex == manager.indexEmasPerak && !manager.isEmasPerakUnlocked)
+            // --- 2. VALIDASI EMAS & PERAK ---
+            if (itemIndex == manager.indexEmasPerak)
             {
-                Debug.Log("Konten terkunci! Belum memenuhi kriteria Wajib Zakat Emas & Perak.");
-                return; // Batalkan proses membuka panel jika belum memenuhi syarat nisab/haul
+                if (!manager.isEmasPerakUnlocked) return; 
             }
 
-            // Jika lolos pengecekan, buka panel kuis target
+            // --- 3. VALIDASI PETERNAKAN ---
+            if (itemIndex == manager.indexPeternakan)
+            {
+                if (!manager.isPeternakanUnlocked) return; 
+            }
+
+            // Memainkan suara klik sukses
+            if (audioSourceZakat != null && suaraKlikBukaZakat != null)
+            {
+                audioSourceZakat.PlayOneShot(suaraKlikBukaZakat);
+            }
+
             if (targetPanel != null)
             {
                 targetPanel.SetActive(true);

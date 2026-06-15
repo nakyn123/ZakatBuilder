@@ -5,10 +5,11 @@ using TMPro;
 
 public class ZakatPerdaganganPanel : MonoBehaviour
 {
-    [Header("UI Elements")]
-    public Button btnClose;
+[Header("UI Elements")]
+    public Button btnClose;          // Tombol silang 'X' di panel kuis/formulir biasa
     public Button btnLanjut;
-    public Button btnCloseReward;
+    public Button btnCloseReward;    // Slot lama (bisa tetap dipakai atau disesuaikan)
+    public Button btnTutupReward;    // 🔥 TAMBAHAN BARU: Tombol khusus di dalam panel reward perdagangan
 
     [Header("Questions")]
     public Button answerA1; 
@@ -27,6 +28,7 @@ public class ZakatPerdaganganPanel : MonoBehaviour
     public AudioSource audioSource; // Komponen AudioSource
     public AudioClip correctSound;  // Klip suara benar
     public AudioClip wrongSound;
+    public AudioClip rewardBacksound; // slot baru untuk backsound reward koin perdagangan
 
     [Header("Settings")]
     public Color correctColor = Color.green;
@@ -45,17 +47,25 @@ public class ZakatPerdaganganPanel : MonoBehaviour
         if (btnClose != null)
         {
             btnClose.onClick.RemoveAllListeners();
-            // --- PERBAIKAN: Gunakan UIManager saat tombol close kuis diklik ---
+            // 🔥 DISAMAKAN PERSIS dengan ZakatEmasPerakPanel dan ZakatTernakPanel
             btnClose.onClick.AddListener(() => {
-                if (UIManager.instance != null)
+                if (UIManager.instance != null) 
                     UIManager.instance.ClosePanelMenu(gameObject);
-                else
+                else 
                     gameObject.SetActive(false);
             });
         }
 
+        // --- Sisa kode tombol di bawahnya tetap dibiarkan utuh dan tidak diganggu ---
+        if (btnTutupReward != null)
+        {
+            btnTutupReward.onClick.RemoveAllListeners();
+            btnTutupReward.onClick.AddListener(KlaimRewardDanClose);
+        }
+        
         if (btnCloseReward != null)
         {
+            btnCloseReward.onClick.RemoveAllListeners();
             btnCloseReward.onClick.AddListener(KlaimRewardDanClose);
         }
 
@@ -73,13 +83,33 @@ public class ZakatPerdaganganPanel : MonoBehaviour
         
         if (btnLanjut != null)
         {
+            btnLanjut.onClick.RemoveAllListeners();
             btnLanjut.onClick.AddListener(BukaFormKuis);
             btnLanjut.interactable = false;
         }
         
         if (audioSource == null) audioSource = GetComponent<AudioSource>();
     }
+    void OnEnable()
+    {
+        // 🔥 RESET ALUR: Setiap kali dibuka dari Carousel, pastikan halaman kuis depan yang menyala, dan form dalam mati
+        if (panelKuisBG != null) panelKuisBG.SetActive(true);
+        if (panelFormKuis != null) panelFormKuis.SetActive(false);
+        if (panelRewardDagang != null) panelRewardDagang.SetActive(false);
+        
+        if (btnLanjut != null) btnLanjut.interactable = false;
 
+        // Kembalikan warna tombol kuis perdagangan menjadi putih bersih untuk dicoba lagi jika sebelumnya salah
+        Button[] kuisButtons = new Button[] { answerA1, answerB1, answerC1, answerA2, answerB2, answerC2, answerA3, answerB3, answerC3 };
+        foreach (Button btn in kuisButtons)
+        {
+            if (btn != null)
+            {
+                Image img = btn.GetComponent<Image>();
+                if (img != null) img.color = Color.white;
+            }
+        }
+    }
     void BukaFormKuis()
     {
         if (panelKuisBG != null) panelKuisBG.SetActive(false); 
@@ -159,7 +189,11 @@ public class ZakatPerdaganganPanel : MonoBehaviour
         if (answerA1.GetComponent<Image>().color == correctColor &&
             answerB2.GetComponent<Image>().color == correctColor &&
             answerB3.GetComponent<Image>().color == correctColor)
-        {
+        {   
+            if (JurnalManager.instance != null)
+            {
+                JurnalManager.instance.isDagangLockedInJurnal = true;
+            }
             if (btnLanjut != null) btnLanjut.interactable = true;
         }
     }
@@ -170,6 +204,12 @@ public class ZakatPerdaganganPanel : MonoBehaviour
         if (panelZakatCarousel != null) panelZakatCarousel.SetActive(false);
         
         if (panelRewardDagang != null) panelRewardDagang.SetActive(true);
+
+        // 🔥 UBAH BAGIAN INI: Putar suara reward hanya sekali saja
+        if (audioSource != null && rewardBacksound != null)
+        {
+            audioSource.PlayOneShot(rewardBacksound);
+        }
     }
 
     // Fungsi baru untuk menghandle pemberian uang pasca kuis level 1 selesai
@@ -202,9 +242,55 @@ public class ZakatPerdaganganPanel : MonoBehaviour
             Debug.LogError("[ZakatPerdaganganPanel] Level2Manager.instance tidak ditemukan di scene!");
         }
 
-        // 4. Matikan Panel Reward dan nonaktifkan GameObject kuis ini
+        // 4. Matikan semua sub-panel kuis (Termasuk background kuis luar/papan baliho) dan nonaktifkan GameObject kuis ini
+        if (panelKuisBG != null) panelKuisBG.SetActive(false); // 🔥 TAMBAHAN UTAMA: Matikan baliho papan putih agar tidak menyangkut di layar
+        if (panelFormKuis != null) panelFormKuis.SetActive(false); 
         if (panelRewardDagang != null) panelRewardDagang.SetActive(false);
+        
         gameObject.SetActive(false); 
     }
-    // Tambahkan ini di dalam class ZakatPanelManager : MonoBehaviour
+    // =================================================================
+    // 🔥 FUNGSI MODULAR UNTUK DIASINGKAN KE ON CLICK () INSPECTOR
+    // =================================================================
+
+    /// <summary>
+    /// Fungsi khusus untuk Tombol Close (X). 
+    /// Mematikan kuis dagang secara paksa dan langsung memerintahkan UIManager untuk menutup paket UI ini agar HUD kembali muncul.
+    /// </summary>
+    public void TombolCloseBatalKuis()
+    {
+        // Matikan sub-panel internal secara bersih
+        if (panelKuisBG != null) panelKuisBG.SetActive(false);
+        if (panelFormKuis != null) panelFormKuis.SetActive(false);
+        if (panelRewardDagang != null) panelRewardDagang.SetActive(false);
+
+        // Tutup via UIManager agar tumpukan stack UI bersih dan HUD dipaksa muncul kembali
+        if (UIManager.instance != null)
+        {
+            UIManager.instance.ClosePanelMenu(gameObject);
+        }
+        else
+        {
+            gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Fungsi alternatif jika kamu ingin mematikan total Buku Carousel Zakat di background secara instan saat tombol diklik.
+    /// </summary>
+    public void PaksaTutupBukuZakatCarousel()
+    {
+        if (ZakatPanelManager.instance != null)
+        {
+            ZakatPanelManager.instance.CloseZakatPanel();
+        }
+    }
+
+    /// <summary>
+    /// Fungsi untuk mematikan GameObject script ini sendiri secara total tanpa lewat UIManager.
+    /// </summary>
+    public void MatikanObjectIniLangsung()
+    {
+        gameObject.SetActive(false);
+    }
 }

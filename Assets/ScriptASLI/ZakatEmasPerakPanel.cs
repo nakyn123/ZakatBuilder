@@ -33,11 +33,13 @@ public class ZakatEmasPerakPanel : MonoBehaviour
     [Header("Action Buttons")]
     public Button btnClose;
     public Button btnSelesaiKuis; 
+    public Button btnTutupReward;
 
     [Header("Audio Settings")]
     public AudioSource audioSource;
     public AudioClip correctSound;
     public AudioClip wrongSound;
+    public AudioClip rewardBacksound;
 
     [Header("Reward Panel")]
     public GameObject panelReward;
@@ -47,9 +49,10 @@ public class ZakatEmasPerakPanel : MonoBehaviour
 
     void Start()
     {
+        // Fungsi Close khusus untuk Form Kuis / Batal Bayar (Hanya menutup dirinya sendiri)
         if (btnClose != null)
         {
-            btnClose.onClick.RemoveAllListeners();
+            btnClose.onClick.RemoveAllListeners(); 
             btnClose.onClick.AddListener(() => {
                 if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(gameObject);
                 else gameObject.SetActive(false);
@@ -58,15 +61,17 @@ public class ZakatEmasPerakPanel : MonoBehaviour
 
         if (btnLanjutKuis != null)
         {
+            btnLanjutKuis.onClick.RemoveAllListeners(); 
             btnLanjutKuis.onClick.AddListener(BukaFormKuis);
             btnLanjutKuis.interactable = false;
         }
 
-        // if (btnSelesaiKuis != null)
-        // {
-        //     btnSelesaiKuis.onClick.RemoveAllListeners();
-        //     btnSelesaiKuis.onClick.AddListener(ValidateZakatEmasPerak);
-        // }
+        // Fungsi khusus untuk menutup panel REWARD dan pindah ke level 3
+        if (btnTutupReward != null)
+        {
+            btnTutupReward.onClick.RemoveAllListeners();
+            btnTutupReward.onClick.AddListener(TutupRewardDanMatikanAudio);
+        }
 
         if (audioSource == null) audioSource = GetComponent<AudioSource>();
 
@@ -151,7 +156,6 @@ public class ZakatEmasPerakPanel : MonoBehaviour
         isEmasWajib = emasSekarang >= JurnalManager.instance.nisabEmasKriteria;
         isPerakWajib = perakSekarang >= JurnalManager.instance.nisabPerakKriteria;
 
-        // 1. UPDATE TEKS HARTA DARI DATA EMAS/PERAK (BUKAN RUPIAH)
         if (isEmasWajib && isPerakWajib)
         {
             txtHartaku.text = $"Emas : {emasSekarang} Gram\nPerak : {perakSekarang} Gram";
@@ -171,7 +175,6 @@ public class ZakatEmasPerakPanel : MonoBehaviour
                 txtDeskripsiZakat.text = "dari total simpanan perak sebesar 2.5% pada tahun ini sejumlah :";
         }
 
-        // 2. AKTIFKAN CONTAINER INPUT FIELD SECARA DINAMIS
         if (containerZakatEmas != null) containerZakatEmas.SetActive(isEmasWajib);
         if (containerZakatPerak != null) containerZakatPerak.SetActive(isPerakWajib);
 
@@ -199,7 +202,6 @@ public class ZakatEmasPerakPanel : MonoBehaviour
 
         if (isEmasWajib && inputZakatEmas != null)
         {
-            // Ganti koma menjadi titik agar dibaca benar sebagai desimal oleh sistem
             string cleanEmas = inputZakatEmas.text.Replace(",", ".");
             if (float.TryParse(cleanEmas, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out float guessEmas))
             {
@@ -221,8 +223,12 @@ public class ZakatEmasPerakPanel : MonoBehaviour
         if (emasValid && perakValid)
         {
             if (audioSource && correctSound) audioSource.PlayOneShot(correctSound);
-
-            // --- PERBAIKAN 1: Potong emas & perak sebesar jumlah nominal yang diinputkan saja ---
+            
+            if (JurnalManager.instance != null)
+            {
+                JurnalManager.instance.isEmasLockedInJurnal = true;
+            }
+            
             if (isEmasWajib && inputZakatEmas != null)
             {
                 string cleanEmas = inputZakatEmas.text.Replace(",", ".");
@@ -241,20 +247,49 @@ public class ZakatEmasPerakPanel : MonoBehaviour
                     MoneyManager.instance.RemovePerak(Mathf.RoundToInt(MoneyManager.instance.totalPerak * 0.025f));
             }
 
-            // --- PERBAIKAN 2: Aktifkan Reward dan hanya matikan halaman Formulir saja ---
             if (panelReward != null) 
             {
                 panelReward.SetActive(true); 
             }
+            if (audioSource != null && rewardBacksound != null)
+            {
+                audioSource.PlayOneShot(rewardBacksound);
+            }
 
             if (panelFormKuis != null) 
             {
-                panelFormKuis.SetActive(false); // Matikan halaman form, jangan matikan gameObject parent-nya!
+                panelFormKuis.SetActive(false); 
             }
         }
         else
         {
             if (audioSource && wrongSound) audioSource.PlayOneShot(wrongSound);
         }
+    }
+
+    void TutupRewardDanMatikanAudio()
+    {
+        if (audioSource != null)
+        {
+            audioSource.Stop();
+            audioSource.loop = false;
+        }
+
+        if (ZakatPanelManager.instance != null)
+        {
+            ZakatPanelManager.instance.isEmasPerakCompleted = true;
+            ZakatPanelManager.instance.UpdateCheckmarkVisuals();
+            ZakatPanelManager.instance.UpdatePaymentButtonVisual();
+        }
+
+        // Langsung panggil perpindahan Level 3 utuh
+        if (Level3Manager.instance != null)
+        {
+            Level3Manager.instance.TutupRewardDanMasukLevel3();
+        }
+
+        if (panelReward != null) panelReward.SetActive(false);
+        if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(gameObject);
+        else gameObject.SetActive(false);
     }
 }

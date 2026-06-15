@@ -15,6 +15,11 @@ public class JurnalManager : MonoBehaviour
     public Button btnNext;
     public Button btnPrevious;
 
+    [Header("Audio Settings - Tambahan")]
+    public AudioSource audioSourceJurnal; 
+    public AudioClip suaraBukaJurnal;     
+    public AudioClip suaraTutupJurnal;
+
     private int currentPage = 1; 
 
     [Header("Halaman 1: Zakat Perdagangan")]
@@ -67,14 +72,26 @@ public class JurnalManager : MonoBehaviour
 
     // 🔥 KONTROL INSPECTOR KHUSUS HAUL & ANAK TERNAK
     [Space(10)]
-    [Tooltip("Waktu detik per bulan KHUSUS untuk Haul Ternak Halaman 3")]
+    [Header("--- Pengaturan Waktu Slider ---")]
+    [Tooltip("Waktu detik per bulan untuk jalannya Slider Haul (Sapi & Kambing)")]
     public float timerPerMonthTernak = 3f; 
 
-    [Tooltip("Interval waktu (detik) untuk penambahan otomatis/beranak")]
-    public float intervalBeranakTernak = 10f;
+    [Header("--- Pengaturan Kelahiran Kambing ---")]
+    public float intervalBeranakKambing = 7f;
 
-    [Tooltip("Jumlah ekor yang bertambah setiap kali interval waktu habis")]
-    public int jumlahTambahanPerInterval = 2;        
+    [Tooltip("Jumlah ekor Kambing yang bertambah setiap kali melahirkan")]
+    public int jumlahTambahanKambing = 15; // Sudah otomatis bernilai 15 sesuai keinginanmu!
+
+    [Header("Lock Status After Reward")]
+    public bool isDagangLockedInJurnal = false;
+    public bool isTernakLockedInJurnal = false;
+    public bool isEmasLockedInJurnal = false;
+
+    private int lockedDagangValue = 0;
+    private int lockedSapiValue = 0;
+    private int lockedKambingValue = 0;
+    private int lockedEmasValue = 0;
+    private int lockedPerakValue = 0;      
 
     private int totalEkorSapiInternal = 0;
     private int totalEkorKambingInternal = 0;
@@ -103,6 +120,8 @@ public class JurnalManager : MonoBehaviour
     private bool isTernakUnlocked = false;
     private bool isTernakNotificationShown = false;
     private bool isTernakCoroutineRunning = false;
+    private Coroutine coSapiBeranak = null;
+    private Coroutine coKambingBeranak = null;
 
     void Awake() { instance = this; }
 
@@ -167,24 +186,61 @@ public class JurnalManager : MonoBehaviour
     {
         if (MoneyManager.instance != null)
         {
-            // --- LOGIKA HALAMAN 1 (PERDAGANGAN) ---
             float currentMoney = MoneyManager.instance.totalMoney;
-            txtHartamu.text = "Rp " + currentMoney.ToString("N0", new System.Globalization.CultureInfo("id-ID"));
+
+            if (!isDagangLockedInJurnal)
+            {
+                txtHartamu.text = "Rp " + currentMoney.ToString("N0", new System.Globalization.CultureInfo("id-ID"));
+                lockedDagangValue = (int)currentMoney; 
+            }
+            else
+            {
+                txtHartamu.text = "Rp " + lockedDagangValue.ToString("N0", new System.Globalization.CultureInfo("id-ID"));
+            }
 
             if (currentMoney >= nisabLimit && !isNisabReached)
             {
                 StartZakatLogic();
             }
 
-            // --- LOGIKA HALAMAN 2 (EMAS & PERAK) ---
-            if (txtHartaEmas != null) txtHartaEmas.text = MoneyManager.instance.totalEmas.ToString() + " gram";
-            if (txtHartaPerak != null) txtHartaPerak.text = MoneyManager.instance.totalPerak.ToString() + " gram";
+            if (!isEmasLockedInJurnal)
+            {
+                int emasSekarang = (MoneyManager.instance != null) ? MoneyManager.instance.totalEmas : 0;
+                int perakSekarang = (MoneyManager.instance != null) ? MoneyManager.instance.totalPerak : 0;
+                
+                txtHartaEmas.text = $"{emasSekarang} Gram";
+                txtHartaPerak.text = $"{perakSekarang} Gram";
+                
+                lockedEmasValue = emasSekarang;
+                lockedPerakValue = perakSekarang;
+            }
+            else
+            {
+                txtHartaEmas.text = $"{lockedEmasValue} Gram";
+                txtHartaPerak.text = $"{lockedPerakValue} Gram";
+            }
 
             CheckEmasPerakNisab();
         }
-
-        // --- LOGIKA HALAMAN 3: UNLOCK & HITUNG DATA TERNAK ---
         CheckLevel3TernakUnlock();
+        if (Level3Manager.instance != null && Level3Manager.instance.isBabak3Aktif)
+        {
+            CekPembelianTokoTernak();
+        }
+
+        if (!isTernakLockedInJurnal)
+        {
+            txtHartaSapi.text = $"{totalEkorSapiInternal} Ekor";
+            txtHartaKambing.text = $"{totalEkorKambingInternal} Ekor";
+            
+            lockedSapiValue = totalEkorSapiInternal;
+            lockedKambingValue = totalEkorKambingInternal;
+        }
+        else
+        {
+            txtHartaSapi.text = $"{lockedSapiValue} Ekor";
+            txtHartaKambing.text = $"{lockedKambingValue} Ekor";
+        }
     }
 
     public void StartZakatLogic() {
@@ -254,7 +310,6 @@ public class JurnalManager : MonoBehaviour
         isEmasPerakCoroutineRunning = false; 
     }
 
-    // Coroutine Timer Haul khusus untuk Zakat Ternak Halaman 3
     IEnumerator HaulTimerTernakRoutine() {
         isTernakCoroutineRunning = true;
         currentHaulMonthTernak = 0;
@@ -401,19 +456,9 @@ public class JurnalManager : MonoBehaviour
     {
         if (isTernakNisabReached && isTernakHaulComplete)
         {
-            int sapiSekarang = GetJumlahSapiRealTime();
-            int kambingSekarang = GetJumlahKambingRealTime();
-
-            if (sapiSekarang >= nisabSapiKriteria && kambingSekarang >= nisabKambingKriteria)
-                txtTernakStatus.text = "Wajib Zakat Sapi & Kambing";
-            else if (sapiSekarang >= nisabSapiKriteria)
-                txtTernakStatus.text = "Wajib Zakat Sapi";
-            else if (kambingSekarang >= nisabKambingKriteria)
-                txtTernakStatus.text = "Wajib Zakat Kambing";
-            else
-                txtTernakStatus.text = "Wajib Zakat Ternak"; 
-
+            txtTernakStatus.text = "Wajib Zakat Hewan Ternak";
             txtTernakStatus.color = Color.black;
+            
             if (messageTextTernak != null) messageTextTernak.SetActive(true);
 
             if (zakatManager != null)
@@ -491,23 +536,32 @@ public class JurnalManager : MonoBehaviour
 
         if (sudahLevel3)
         {
+            if (panelLockTernak != null && panelLockTernak.activeSelf) panelLockTernak.SetActive(false);
+            if (panelUnlockTernak != null && !panelUnlockTernak.activeSelf) panelUnlockTernak.SetActive(true);
+
             if (!isTernakUnlocked)
             {
                 isTernakUnlocked = true;
-
-                if (panelLockTernak != null) panelLockTernak.SetActive(false);
-                if (panelUnlockTernak != null) panelUnlockTernak.SetActive(true);
             }
 
-            // Selalu perbarui teks jumlah kuantitas sapi dan kambing secara berkala
             int sapiSekarang = GetJumlahSapiRealTime();
             int kambingSekarang = GetJumlahKambingRealTime();
 
-            if (txtHartaSapi != null) txtHartaSapi.text = sapiSekarang.ToString() + " Ekor";
-            if (txtHartaKambing != null) txtHartaKambing.text = kambingSekarang.ToString() + " Ekor";
+            if (!isTernakLockedInJurnal)
+            {
+                if (txtHartaSapi != null) txtHartaSapi.text = sapiSekarang.ToString() + " Ekor";
+                if (txtHartaKambing != null) txtHartaKambing.text = kambingSekarang.ToString() + " Ekor";
+                
+                lockedSapiValue = sapiSekarang;
+                lockedKambingValue = kambingSekarang;
+            }
+            else
+            {
+                if (txtHartaSapi != null) txtHartaSapi.text = lockedSapiValue.ToString() + " Ekor";
+                if (txtHartaKambing != null) txtHartaKambing.text = lockedKambingValue.ToString() + " Ekor";
+            }
 
-            // 🔥 LOGIKA BARU: Jika SUDAH ADA ternak (pembelian pertama sukses), langsung nyalakan timer Haul!
-            if (sapiSekarang > 0 || kambingSekarang > 0)
+            if (isTernakNisabReached)
             {
                 if (!isTernakCoroutineRunning && !isTernakHaulComplete)
                 {
@@ -515,7 +569,6 @@ public class JurnalManager : MonoBehaviour
                 }
             }
 
-            // 🔥 EVALUASI NISAB SECARA REAL-TIME: Centang nisab baru menyala jika angka ternak menyentuh batas kriteria
             if (sapiSekarang >= nisabSapiKriteria || kambingSekarang >= nisabKambingKriteria)
             {
                 if (!isTernakNisabReached)
@@ -528,84 +581,88 @@ public class JurnalManager : MonoBehaviour
                     {
                         ikonNotifikasiJurnal.SetActive(true);
                     }
-                    
-                    // Update status UI untuk mengecek apakah Haul juga sudah selesai
-                    UpdateTernakStatusUI();
                 }
+                UpdateTernakStatusUI();
             }
         }
     }
 
-    private int GetJumlahSapiRealTime()
+    // 🔥 PERBAIKAN: Kode pememicu coroutine dipindah ke atas sebelum baris 'return' agar tidak Unreachable
+    public int GetJumlahSapiRealTime()
+    {
+        if (!isSistemSapiBeranakAktif && totalEkorSapiInternal > 0) 
+        {
+            coSapiBeranak = StartCoroutine(SistemSapiBeranakRoutine());
+        }
+        return totalEkorSapiInternal; 
+    }
+
+    public int GetJumlahKambingRealTime()
+    {
+        if (!isSistemKambingBeranakAktif && totalEkorKambingInternal > 0) 
+        {
+            coKambingBeranak = StartCoroutine(SistemKambingBeranakRoutine());
+        }
+        return totalEkorKambingInternal; 
+    }
+
+    private void CekPembelianTokoTernak()
     {
         if (TokoManager.instance != null)
         {
             int sapiDariToko = (int)System.Type.GetType("TokoManager").GetField("jumlahSapiDibeli", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(TokoManager.instance);
-            
             if (sapiDariToko > trackerJumlahSapiToko)
             {
                 int selisihBeli = sapiDariToko - trackerJumlahSapiToko;
                 totalEkorSapiInternal += (selisihBeli * 10); 
                 trackerJumlahSapiToko = sapiDariToko;
 
-                // 🔥 Pemicu mandiri khusus Sapi
-                if (!isSistemSapiBeranakAktif) StartCoroutine(SistemSapiBeranakRoutine());
+                if (!isSistemSapiBeranakAktif) coSapiBeranak = StartCoroutine(SistemSapiBeranakRoutine());
             }
-        }
-        return totalEkorSapiInternal; 
-    }
 
-    private int GetJumlahKambingRealTime()
-    {
-        if (TokoManager.instance != null)
-        {
             int kambingDariToko = (int)System.Type.GetType("TokoManager").GetField("jumlahKambingDibeli", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(TokoManager.instance);
-            
             if (kambingDariToko > trackerJumlahKambingToko)
             {
                 int selisihBeli = kambingDariToko - trackerJumlahKambingToko;
                 totalEkorKambingInternal += (selisihBeli * 10); 
                 trackerJumlahKambingToko = kambingDariToko;
 
-                // 🔥 Pemicu mandiri khusus Kambing
-                if (!isSistemKambingBeranakAktif) StartCoroutine(SistemKambingBeranakRoutine());
+                if (!isSistemKambingBeranakAktif) coKambingBeranak = StartCoroutine(SistemKambingBeranakRoutine());
             }
         }
-        return totalEkorKambingInternal; 
     }
 
-    // 🔥 COROUTINE KHUSUS SAPI (Ikut waktu interval di Inspector, misal: 10 detik)
-    // 🔥 COROUTINE KHUSUS SAPI: Setiap 5 detik bertambah 5 ekor
     IEnumerator SistemSapiBeranakRoutine()
     {
         isSistemSapiBeranakAktif = true;
 
         while (true)
         {
-            yield return new WaitForSeconds(5f); // 5 Detik
+            yield return new WaitForSeconds(3f); 
 
-            if (totalEkorSapiInternal > 0 && totalEkorSapiInternal < 50)
+            if (totalEkorSapiInternal > 0)
             {
-                totalEkorSapiInternal += 5; // Beranak 5 ekor!
-                if (totalEkorSapiInternal > 50) totalEkorSapiInternal = 50; 
+                totalEkorSapiInternal += 5; 
+                if (totalEkorSapiInternal > 200) totalEkorSapiInternal = 200; 
+                
                 Debug.Log($"<color=white>[Jurnal Ternak]</color> Sapi melahirkan! Jumlah sekarang: {totalEkorSapiInternal} ekor.");
             }
         }
     }
 
-    // 🔥 COROUTINE KHUSUS KAMBING: Setiap 7 detik bertambah 2 ekor
+    // 🔥 PERBAIKAN: Variabel disesuaikan dengan 'jumlahTambahanKambing' dan diletakkan di dalam while loop dengan benar
     IEnumerator SistemKambingBeranakRoutine()
     {
         isSistemKambingBeranakAktif = true;
 
         while (true)
         {
-            yield return new WaitForSeconds(7f); // 7 Detik
+            yield return new WaitForSeconds(intervalBeranakKambing); 
 
-            if (totalEkorKambingInternal > 0 && totalEkorKambingInternal < 50)
+            if (totalEkorKambingInternal > 0)
             {
-                totalEkorKambingInternal += 2; // Beranak 2 ekor!
-                if (totalEkorKambingInternal > 50) totalEkorKambingInternal = 50; 
+                totalEkorKambingInternal += jumlahTambahanKambing; 
+                
                 Debug.Log($"<color=orange>[Jurnal Ternak]</color> Kambing melahirkan! Jumlah sekarang: {totalEkorKambingInternal} ekor.");
             }
         }
@@ -613,13 +670,17 @@ public class JurnalManager : MonoBehaviour
 
     public void OpenJurnal() 
     { 
+        if (audioSourceJurnal != null && suaraBukaJurnal != null) {
+            audioSourceJurnal.PlayOneShot(suaraBukaJurnal);
+        }
+
         if (UIManager.instance != null)
         {
             UIManager.instance.OpenPanelMenu(jurnalContent);
         }
         else
         {
-            jurnalContent.SetActive(true); 
+            jurnalContent.SetActive(true);
         }
 
         if (asetBlur != null) asetBlur.SetActive(true);
@@ -628,6 +689,10 @@ public class JurnalManager : MonoBehaviour
 
     public void CloseJurnal()
     {
+        if (audioSourceJurnal != null && suaraTutupJurnal != null) {
+            audioSourceJurnal.PlayOneShot(suaraTutupJurnal);
+        }
+
         if (UIManager.instance != null)
         {
             UIManager.instance.ClosePanelMenu(jurnalContent);
@@ -653,5 +718,23 @@ public class JurnalManager : MonoBehaviour
     public bool IsPeternakanUnlocked()
     {
         return isTernakNisabReached && isTernakHaulComplete; 
+    }
+
+    public void MatikanSistemBeranak()
+    {
+        if (coSapiBeranak != null)
+        {
+            StopCoroutine(coSapiBeranak);
+            coSapiBeranak = null;
+        }
+        if (coKambingBeranak != null)
+        {
+            StopCoroutine(coKambingBeranak);
+            coKambingBeranak = null;
+        }
+        
+        isSistemSapiBeranakAktif = false;
+        isSistemKambingBeranakAktif = false;
+        Debug.Log("<color=red>[Jurnal Ternak]</color> Coroutine beranak dihentikan secara permanen.");
     }
 }

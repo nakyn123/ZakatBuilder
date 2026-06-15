@@ -19,6 +19,10 @@ public class ManajemenMakanan3D : MonoBehaviour
     [Header("Pengaturan Waktu (Detik)")]
     [SerializeField] private float waktuMakanTotal = 10f; 
 
+    [Header("Audio Settings - Tambahan")]
+    [SerializeField] private AudioSource audioSourcePakan; // Tarik AudioSource objek ini ke sini
+    [SerializeField] private AudioClip suaraSuksesMakan;   // Tarik SFX suara menaruh rumput/sapi makan
+
     private float waktuBerjalan;
     private bool makananHabis = false;
     private bool pakanPertamaSudahDimasukan = false; 
@@ -75,12 +79,12 @@ public class ManajemenMakanan3D : MonoBehaviour
     public void MasukinPakanPertama()
     {
         if (InventoryManager.instance != null && InventoryManager.instance.GunakanPakanDiWorld())
-        {
+        {   PlayPakanSound(suaraSuksesMakan);
             MulaiSapiMakan();
             Debug.Log("[PakanSapi] Player memasukkan pakan. Sisa di inventory: " + InventoryManager.instance.pakanRumputCount);
         }
         else
-        {
+        {   
             Debug.LogWarning("[PakanSapi] Gagal memberi makan! Pakan di Inventory HABIS.");
             
             // 🔥 MODIFIKASI: Munculkan Panel Pop-up 2D
@@ -92,7 +96,7 @@ public class ManajemenMakanan3D : MonoBehaviour
     public void IsiUlangMakananHabis()
     {
         if (InventoryManager.instance != null && InventoryManager.instance.GunakanPakanDiWorld())
-        {
+        {   PlayPakanSound(suaraSuksesMakan);
             MulaiSapiMakan();
             Debug.Log("[PakanSapi] Player mengisi ulang pakan. Sisa di inventory: " + InventoryManager.instance.pakanRumputCount);
         }
@@ -155,6 +159,13 @@ public class ManajemenMakanan3D : MonoBehaviour
         if (panelPakanHabisPopUp != null)
         {
             panelPakanHabisPopUp.SetActive(false);
+        }
+    }
+    private void PlayPakanSound(AudioClip clip)
+    {
+        if (audioSourcePakan != null && clip != null)
+        {
+            audioSourcePakan.PlayOneShot(clip);
         }
     }
 }

@@ -65,6 +65,12 @@ public class InventoryManager : MonoBehaviour {
     public TextMeshProUGUI pakanRumputText; // Tarik Text UI Rumput dari Screenshot 2026-06-05 132554.png
     public GameObject slotPakanRumput;
 
+    [Header("Audio Settings - Tambahan")]
+    public AudioSource audioSourceInventory; // Komponen AudioSource tempat memutar suara
+    public AudioClip suaraJualKoin;          // File SFX suara koin/sukses menjual
+    public AudioClip suaraBukaInventory;    // 🔥 TAMBAHAN BARU
+    public AudioClip suaraTutupInventory;
+
     void Awake() { instance = this; }
 
     void Start() {
@@ -75,12 +81,12 @@ public class InventoryManager : MonoBehaviour {
         UpdateUI(); 
     }
 
-    // 🔥 FUNGSI BARU: Dipanggil saat transisi Level 3 untuk memindahkan sisa emas & perak mentah ke inventory
+    // Gunakan += agar sistemnya mengakumulasi/menambahkan, bukan menimpa data lama
     public void KonversiSisaLogamKeAset(int sisaEmas, int sisaPerak) {
-        asetEmasCount = sisaEmas;
-        asetPerakCount = sisaPerak;
+        asetEmasCount += sisaEmas;   // 🔥 Diubah dari = menjadi +=
+        asetPerakCount += sisaPerak; // 🔥 Diubah dari = menjadi +=
         
-        Debug.Log($"<color=orange>[Inventory]</color> Berhasil mengonversi sisa logam mulia menjadi aset: {sisaEmas}g Emas & {sisaPerak}g Perak.");
+        Debug.Log($"<color=orange>[Inventory]</color> Berhasil menambahkan sisa logam mulia ke aset tas: +{sisaEmas}g Emas & +{sisaPerak}g Perak. Total Sekarang: {asetEmasCount} Emas, {asetPerakCount} Perak.");
         UpdateUI();
     }
 
@@ -144,18 +150,27 @@ public class InventoryManager : MonoBehaviour {
         bool currentState = inventoryPanel.activeSelf;
 
         if (!currentState) {
+            // 🔥 TAMBAHAN: Suara saat tas DIBUKA
+            if (audioSourceInventory != null && suaraBukaInventory != null) {
+                audioSourceInventory.PlayOneShot(suaraBukaInventory);
+            }
+
             if (UIManager.instance != null) UIManager.instance.OpenPanelMenu(inventoryPanel);
             else inventoryPanel.SetActive(true);
 
-            // 🔥 PAKSA UPDATE: Begitu tas dibuka di Level 3, langsung hitung ulang visual slot pakan & logam mulia
-            UpdateUI(); 
+            UpdateUI();
 
             if (navCoinObject != null) {
                 navCoinObject.transform.SetParent(inventoryPanel.transform);
-                navCoinObject.transform.SetAsLastSibling(); 
-                navCoinObject.SetActive(true); 
+                navCoinObject.transform.SetAsLastSibling();
+                navCoinObject.SetActive(true);
             }
         } else {
+            // 🔥 TAMBAHAN: Suara saat tas DITUTUP
+            if (audioSourceInventory != null && suaraTutupInventory != null) {
+                audioSourceInventory.PlayOneShot(suaraTutupInventory);
+            }
+
             if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(inventoryPanel);
             else inventoryPanel.SetActive(false);
 
@@ -172,6 +187,9 @@ public class InventoryManager : MonoBehaviour {
             SpawnUICoin(priceKecil, btnJualKecilPos);
             if(TaskManager.instance != null) TaskManager.instance.NotifyWoodSold();
         }
+        if (audioSourceInventory != null && suaraJualKoin != null) {
+            audioSourceInventory.PlayOneShot(suaraJualKoin);
+        }
     }
 
     public void JualKayuSedang() {
@@ -181,6 +199,9 @@ public class InventoryManager : MonoBehaviour {
             SpawnUICoin(priceSedang, btnJualSedangPos);
             if(TaskManager.instance != null) TaskManager.instance.NotifyWoodSold();
         }
+        if (audioSourceInventory != null && suaraJualKoin != null) {
+            audioSourceInventory.PlayOneShot(suaraJualKoin);
+        }
     }
 
     public void JualKayuBesar() {
@@ -189,6 +210,9 @@ public class InventoryManager : MonoBehaviour {
             UpdateUI();
             SpawnUICoin(priceBesar, btnJualBesarPos);
             if(TaskManager.instance != null) TaskManager.instance.NotifyWoodSold();
+        }
+        if (audioSourceInventory != null && suaraJualKoin != null) {
+            audioSourceInventory.PlayOneShot(suaraJualKoin);
         }
     }
 
@@ -212,7 +236,9 @@ public class InventoryManager : MonoBehaviour {
         
         // 🔥 GANTI DI SINI: Gunakan btnJualEmasPos, bukan btnJualKecilPos lagi!
         SpawnUICoin(totalPendapatan, btnJualEmasPos); 
-
+        if (audioSourceInventory != null && suaraJualKoin != null) {
+            audioSourceInventory.PlayOneShot(suaraJualKoin);
+        }
     }
 
     // ✅ PERBAIKAN: FUNGSI JUAL PERAK
@@ -234,10 +260,9 @@ public class InventoryManager : MonoBehaviour {
         
         // 🔥 GANTI DI SINI: Gunakan btnJualPerakPos, bukan btnJualKecilPos lagi!
         SpawnUICoin(totalPendapatan, btnJualPerakPos); 
-        
-        // if (MoneyManager.instance != null) {
-        //     MoneyManager.instance.AddMoney(totalPendapatan);
-        // }
+        if (audioSourceInventory != null && suaraJualKoin != null) {
+            audioSourceInventory.PlayOneShot(suaraJualKoin);
+        }
     }
     public void JualPakanRumput() {
         // Pastikan rumputnya ada dulu baru bisa dijual
@@ -247,6 +272,9 @@ public class InventoryManager : MonoBehaviour {
             
             // Munculin efek koin terbang terbang dari posisi tombol rumput
             SpawnUICoin(pricePakanRumput, btnJualRumputPos);
+        }
+        if (audioSourceInventory != null && suaraJualKoin != null) {
+            audioSourceInventory.PlayOneShot(suaraJualKoin);
         }
     }
 

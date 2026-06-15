@@ -46,10 +46,9 @@ public class TokoManager : MonoBehaviour
 
     [Header("UI Peringatan (Jika Belum Level 3)")]
     public GameObject txtPeringatanTokoObj; 
+    public AudioClip suaraBukaToko;    // 🔥 TAMBAHAN BARU
+    public AudioClip suaraTutupToko;
 
-    // =================================================================
-    // 🔥 PERBAIKAN: BERSIH & TANPA VARIABEL IMAGE BUTTON MANUAL
-    // =================================================================
     [Header("Pengaturan Limit & Game Object Sapi (Urutan 1-5)")]
     public List<GameObject> listSapi3D = new List<GameObject>();
     public Button btnBeliSapi;
@@ -61,7 +60,6 @@ public class TokoManager : MonoBehaviour
     public Button btnBeliKambing;
     public Sprite spriteKambingSoldOut;
     private int jumlahKambingDibeli = 0;
-    // =================================================================
 
     [HideInInspector] public bool isPlayerInside = false;
     
@@ -145,7 +143,9 @@ public class TokoManager : MonoBehaviour
     }
 
     public void TombolTokoHUDDiKlik()
-    {
+    {   if (audioSourceToko != null && suaraBukaToko != null) {
+            audioSourceToko.PlayOneShot(suaraBukaToko);
+        }
         if (notifTandaSeruObj != null) notifTandaSeruObj.SetActive(false);
 
         SembuhkanDanBawaNavCoinKeDepan(true);
@@ -346,7 +346,9 @@ public class TokoManager : MonoBehaviour
     }
 
     public void CloseTokoPanel()
-    {
+    {   if (audioSourceToko != null && suaraTutupToko != null) {
+            audioSourceToko.PlayOneShot(suaraTutupToko);
+        }
         GameObject panelToClose = (masterTokoPanelUtama != null) ? masterTokoPanelUtama : mainTokoPanel;
 
         if (panelToClose != null)
@@ -437,7 +439,8 @@ public class TokoManager : MonoBehaviour
                 {
                     if (btnBeliSapi != null)
                     {
-                        btnBeliSapi.interactable = false;
+                        // Tetap true agar warna sprite tidak transparan/mengikuti disabled color
+                        btnBeliSapi.interactable = true;
                         Image imgBtn = btnBeliSapi.GetComponent<Image>();
                         if (imgBtn != null && spriteSapiSoldOut != null) imgBtn.sprite = spriteSapiSoldOut;
                     }
@@ -478,7 +481,7 @@ public class TokoManager : MonoBehaviour
                 {
                     if (btnBeliKambing != null)
                     {
-                        btnBeliKambing.interactable = false;
+                        btnBeliKambing.interactable = true;
                         Image imgBtn = btnBeliKambing.GetComponent<Image>();
                         if (imgBtn != null && spriteKambingSoldOut != null) imgBtn.sprite = spriteKambingSoldOut;
                     }

@@ -597,4 +597,40 @@ public class TokoManager : MonoBehaviour
         }
         if (TaskManager.instance != null) TaskManager.instance.NotifyBeliPakan();
     }
+
+    // 🔄 PERBARUI FUNGSI INI DI TOKOMANAGER.CS
+    public void UpdateVisualHewanBerdasarkanJumlah(int totalSapi, int totalKambing)
+    {
+        // --- KASUS SAPI ---
+        if (listSapi3D.Count >= 5)
+        {
+            // 🔹 Hewan ke-2 (index 1) aktif jika jumlah mencapai 30 ekor
+            if (totalSapi >= 30 && listSapi3D[1] != null) listSapi3D[1].SetActive(true);
+            
+            // Hewan ke-3 (index 2) aktif jika jumlah mencapai 50 ekor
+            if (totalSapi >= 50 && listSapi3D[2] != null) listSapi3D[2].SetActive(true);
+            
+            // Hewan ke-4 (index 3) aktif jika jumlah mencapai 80 ekor
+            if (totalSapi >= 80 && listSapi3D[3] != null) listSapi3D[3].SetActive(true);
+            
+            // Hewan ke-5 (index 4) aktif jika jumlah mencapai 100 ekor
+            if (totalSapi >= 100 && listSapi3D[4] != null) listSapi3D[4].SetActive(true);
+        }
+
+        // --- KASUS KAMBING ---
+        if (listKambing3D.Count >= 5)
+        {
+            // 🔹 Hewan ke-2 (index 1) aktif jika jumlah mencapai 30 ekor
+            if (totalKambing >= 30 && listKambing3D[1] != null) listKambing3D[1].SetActive(true);
+            
+            // Hewan ke-3 (index 2) aktif jika jumlah mencapai 50 ekor
+            if (totalKambing >= 50 && listKambing3D[2] != null) listKambing3D[2].SetActive(true);
+            
+            // Hewan ke-4 (index 3) aktif jika jumlah mencapai 80 ekor
+            if (totalKambing >= 80 && listKambing3D[3] != null) listKambing3D[3].SetActive(true);
+            
+            // Hewan ke-5 (index 4) aktif jika jumlah mencapai 100 ekor
+            if (totalKambing >= 100 && listKambing3D[4] != null) listKambing3D[4].SetActive(true);
+        }
+    }
 }

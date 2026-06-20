@@ -6,22 +6,42 @@ using TMPro;
 
 public class ZakatEmasPerakPanel : MonoBehaviour
 {
-    [Header("UI Kuis BG Elements")]
-    public GameObject panelKuisBG;
-    public Button btnLanjutKuis;
-    
-    [Tooltip("Masukkan SEMUA tombol jawaban kuis (benar dan salah) yang ada di panel kuis ke sini")]
-    public List<Button> allQuizButtons; 
+    [Header("UI Elements Utama")]
+    public Button btnClose;          // Tombol silang 'X' untuk batal/tutup kuis biasa
+    public Button btnLanjutKuisBabak; // Untuk navigasi lanjut babak kuis (Babak 1 -> 2 -> 3)
+    public Button btnLanjutFormUtama; // Untuk beralih ke form kuis kalkulator (muncul kalau nilai >= 7)
+    public Button btnTutupReward;    
 
-    [Tooltip("Masukkan hanya tombol jawaban yang BENAR saja")]
-    public List<Button> correctButtons; 
+    [Header("--- DAFTAR TOMBOL SOAL (SERET KE SINI) ---")]
+    [Header("Babak 1")]
+    public Button answerA1; public Button answerB1; public Button answerC1;
+    public Button answerA2; public Button answerB2; public Button answerC2;
+    public Button answerA3; public Button answerB3; public Button answerC3;
     
-    private HashSet<Button> selectedCorrectButtons = new HashSet<Button>();
+    [Header("Babak 2")]
+    public Button answerA4; public Button answerB4; public Button answerC4;
+    public Button answerA5; public Button answerB5; public Button answerC5;
+    public Button answerA6; public Button answerB6; public Button answerC6;
+
+    [Header("Babak 3")]
+    public Button answerA7; public Button answerB7; public Button answerC7;
+    public Button answerA8; public Button answerB8; public Button answerC8;
+    public Button answerA9; public Button answerB9; public Button answerC9;
+
+    [Header("Babak 4")]
+    public Button answerA10; public Button answerB10; public Button answerC10;
+
+    [Header("Sistem Babak & Hasil")]
+    public List<GameObject> panelBabakObjects; // Elemen 0 = Babak 1, Elemen 1 = Babak 2, dst
+    public Button btnKalkulasiNilai;
+    public Button btnUlangiKuis;
+    public GameObject panelHasilKuis; 
+    public TMP_Text txtNilaiFormat;    
+    public TMP_Text txtApresiasi;      
 
     [Header("UI Form Kuis Elements")]
     public GameObject panelFormKuis;
     public TMP_Text txtHartaku; 
-    [Tooltip("Tarik objek 'teks2 (1)' yang ada di bawah tulisan harta ke sini untuk merubah teks deskripsi secara dinamis")]
     public TMP_Text txtDeskripsiZakat; 
 
     [Header("Dynamic Input Fields")]
@@ -30,120 +50,286 @@ public class ZakatEmasPerakPanel : MonoBehaviour
     public TMP_InputField inputZakatEmas;   
     public TMP_InputField inputZakatPerak;  
 
-    [Header("Action Buttons")]
-    public Button btnClose;
+    [Header("Action Buttons Form")]
     public Button btnSelesaiKuis; 
-    public Button btnTutupReward;
 
     [Header("Audio Settings")]
     public AudioSource audioSource;
-    public AudioClip correctSound;
+    public AudioClip correctSound; // Sound 1 tunggal untuk setiap klik
     public AudioClip wrongSound;
     public AudioClip rewardBacksound;
+    public AudioClip clickSound;
 
     [Header("Reward Panel")]
     public GameObject panelReward;
+    public GameObject panelKuisBG;
 
     [HideInInspector] public bool isEmasWajib = false;
     [HideInInspector] public bool isPerakWajib = false;
 
+    private int currentBabak = 1; 
+    private int skorBenar = 0;
+    private int jumlahJawabanDiBabakIni = 0;
+    private HashSet<int> soalSudahDijawab = new HashSet<int>();
+
     void Start()
     {
-        // Fungsi Close khusus untuk Form Kuis / Batal Bayar (Hanya menutup dirinya sendiri)
+        // Setup tombol dasar sesuai request (Close akan mereset dan menutup)
         if (btnClose != null)
         {
             btnClose.onClick.RemoveAllListeners(); 
-            btnClose.onClick.AddListener(() => {
-                if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(gameObject);
-                else gameObject.SetActive(false);
-            });
+            btnClose.onClick.AddListener(TombolCloseBatalKuis);
         }
 
-        if (btnLanjutKuis != null)
+        if (btnLanjutKuisBabak != null)
         {
-            btnLanjutKuis.onClick.RemoveAllListeners(); 
-            btnLanjutKuis.onClick.AddListener(BukaFormKuis);
-            btnLanjutKuis.interactable = false;
+            btnLanjutKuisBabak.onClick.RemoveAllListeners();
+            btnLanjutKuisBabak.onClick.AddListener(LanjutBabakBerikutnya);
         }
 
-        // Fungsi khusus untuk menutup panel REWARD dan pindah ke level 3
+        if (btnLanjutFormUtama != null)
+        {
+            btnLanjutFormUtama.onClick.RemoveAllListeners();
+            btnLanjutFormUtama.onClick.AddListener(BukaFormKuis);
+        }
+
+        if (btnKalkulasiNilai != null)
+        {
+            btnKalkulasiNilai.onClick.RemoveAllListeners();
+            btnKalkulasiNilai.onClick.AddListener(KalkulasiNilaiAkhir);
+        }
+
+        if (btnUlangiKuis != null)
+        {
+            btnUlangiKuis.onClick.RemoveAllListeners();
+            btnUlangiKuis.onClick.AddListener(ResetDanUlangiKuis);
+        }
+
+        if (btnSelesaiKuis != null)
+        {
+            btnSelesaiKuis.onClick.RemoveAllListeners();
+            btnSelesaiKuis.onClick.AddListener(ValidateZakatEmasPerak);
+        }
+
         if (btnTutupReward != null)
         {
             btnTutupReward.onClick.RemoveAllListeners();
             btnTutupReward.onClick.AddListener(TutupRewardDanMatikanAudio);
         }
 
-        if (audioSource == null) audioSource = GetComponent<AudioSource>();
+        // 🔥 DAFTARKAN SEMUA TOMBOL JAWABAN SEPERTI DI PERDAGANGAN
+        SetupJawaban(answerA1, 1);  SetupJawaban(answerB1, 1);  SetupJawaban(answerC1, 1);
+        SetupJawaban(answerA2, 2);  SetupJawaban(answerB2, 2);  SetupJawaban(answerC2, 2);
+        SetupJawaban(answerA3, 3);  SetupJawaban(answerB3, 3);  SetupJawaban(answerC3, 3);
 
-        SetupAllQuizButtons();
+        SetupJawaban(answerA4, 4);  SetupJawaban(answerB4, 4);  SetupJawaban(answerC4, 4);
+        SetupJawaban(answerA5, 5);  SetupJawaban(answerB5, 5);  SetupJawaban(answerC5, 5);
+        SetupJawaban(answerA6, 6);  SetupJawaban(answerB6, 6);  SetupJawaban(answerC6, 6);
+
+        SetupJawaban(answerA7, 7);  SetupJawaban(answerB7, 7);  SetupJawaban(answerC7, 7);
+        SetupJawaban(answerA8, 8);  SetupJawaban(answerB8, 8);  SetupJawaban(answerC8, 8);
+        SetupJawaban(answerA9, 9);  SetupJawaban(answerB9, 9);  SetupJawaban(answerC9, 9);
+
+        SetupJawaban(answerA10, 10); SetupJawaban(answerB10, 10); SetupJawaban(answerC10, 10);
+
+        if (audioSource == null) audioSource = GetComponent<AudioSource>();
+        InisialisasiAwalKuis();
     }
 
     void OnEnable()
     {
         if (panelKuisBG != null) panelKuisBG.SetActive(true);
         if (panelFormKuis != null) panelFormKuis.SetActive(false);
-        if (btnLanjutKuis != null) btnLanjutKuis.interactable = false;
-        selectedCorrectButtons.Clear();
-
-        foreach (Button btn in allQuizButtons)
-        {
-            if (btn != null) btn.GetComponent<Image>().color = Color.white;
-        }
-
-        ConfigureFormDinamis();
+        if (panelReward != null) panelReward.SetActive(false);
+        if (panelHasilKuis != null) panelHasilKuis.SetActive(false);
+        InisialisasiAwalKuis();
     }
 
-    void SetupAllQuizButtons()
+    void InisialisasiAwalKuis()
     {
-        foreach (Button btn in allQuizButtons)
-        {
-            if (btn == null) continue;
+        currentBabak = 1; skorBenar = 0; jumlahJawabanDiBabakIni = 0;
+        soalSudahDijawab.Clear();
 
-            bool isCorrectAnswer = correctButtons.Contains(btn);
+        if (btnLanjutKuisBabak != null) btnLanjutKuisBabak.gameObject.SetActive(false);
+        if (btnLanjutFormUtama != null) btnLanjutFormUtama.gameObject.SetActive(false);
+        if (btnKalkulasiNilai != null) btnKalkulasiNilai.gameObject.SetActive(false);
+        if (btnUlangiKuis != null) btnUlangiKuis.gameObject.SetActive(false);
 
-            btn.onClick.RemoveAllListeners();
-            btn.onClick.AddListener(() => OnAnswerSelected(btn, isCorrectAnswer));
-        }
+        UpdateVisualBabak();
     }
 
-    public void OnAnswerSelected(Button clickedBtn, bool isCorrect)
+    void SetupJawaban(Button btn, int nomorSoal)
     {
-        if (isCorrect)
-        {
-            if (audioSource != null && correctSound != null) audioSource.PlayOneShot(correctSound);
-            clickedBtn.GetComponent<Image>().color = Color.green;
-            
-            selectedCorrectButtons.Add(clickedBtn);
+        if (btn == null) return;
+        btn.onClick.RemoveAllListeners();
+        btn.onClick.AddListener(() => EksekusiKlikJawaban(btn, nomorSoal));
+    }
 
-            if (selectedCorrectButtons.Count == correctButtons.Count)
+    void EksekusiKlikJawaban(Button tombolDitekan, int nomorSoal)
+    {
+        // Gunakan sound 1 tunggal untuk klik apa pun sesuai keinginanmu
+        if (audioSource != null && correctSound != null) audioSource.PlayOneShot(correctSound);
+
+        bool sudahPernahDijawab = soalSudahDijawab.Contains(nomorSoal);
+
+        // Reset warna tombol pasangannya dalam satu soal ke putih semula
+        Transform soalParent = tombolDitekan.transform.parent;
+        if (soalParent != null)
+        {
+            Button[] tombolPasangan = soalParent.GetComponentsInChildren<Button>(true);
+            foreach (Button b in tombolPasangan)
             {
-                if (btnLanjutKuis != null) btnLanjutKuis.interactable = true;
+                if (b != null) b.GetComponent<Image>().color = Color.white;
             }
+        }
+
+        // Ubah warna tombol aktif terpilih jadi hijau settle
+        tombolDitekan.GetComponent<Image>().color = Color.green;
+
+        if (!sudahPernahDijawab)
+        {
+            soalSudahDijawab.Add(nomorSoal);
+            jumlahJawabanDiBabakIni++;
+        }
+
+        // Cek kondisi kemunculan tombol navigasi babak
+        if (currentBabak <= 3)
+        {
+            if (jumlahJawabanDiBabakIni >= 3)
+            {
+                if (btnLanjutKuisBabak != null) btnLanjutKuisBabak.gameObject.SetActive(true);
+            }
+        }
+        else if (currentBabak == 4)
+        {
+            if (btnKalkulasiNilai != null) btnKalkulasiNilai.gameObject.SetActive(true);
+        }
+    }
+
+    void LanjutBabakBerikutnya()
+    {
+        currentBabak++;
+        UpdateVisualBabak();
+    }
+
+    void UpdateVisualBabak()
+    {
+        for (int i = 0; i < panelBabakObjects.Count; i++)
+        {
+            if (panelBabakObjects[i] != null) panelBabakObjects[i].SetActive((i + 1) == currentBabak);
+        }
+        jumlahJawabanDiBabakIni = 0;
+        if (btnLanjutKuisBabak != null) btnLanjutKuisBabak.gameObject.SetActive(false);
+    }
+
+    void KalkulasiNilaiAkhir()
+    {   if (audioSource != null && clickSound != null) audioSource.PlayOneShot(clickSound);
+        if (panelHasilKuis != null) panelHasilKuis.SetActive(true);
+        if (btnKalkulasiNilai != null) btnKalkulasiNilai.gameObject.SetActive(false);
+
+        skorBenar = 0;
+
+        // 🔥 KUNCI JAWABAN KUIS EMAS PERAK
+        // format: CheckSkorTombol(NamaVariabelTombol, ApakahIniKunciJawabanYangBenar);
+        // Silakan sesuaikan letak kata 'true' di bawah ini dengan kunci jawaban kuis materi Emas & Perak milikmu!
+        
+        // Soal 1
+        CheckSkorTombol(answerA1, false);   CheckSkorTombol(answerB1, true);  CheckSkorTombol(answerC1, false);
+        // Soal 2
+        CheckSkorTombol(answerA2, true);  CheckSkorTombol(answerB2, false);   CheckSkorTombol(answerC2, false);
+        // Soal 3
+        CheckSkorTombol(answerA3, false);  CheckSkorTombol(answerB3, false);  CheckSkorTombol(answerC3, true);
+        // Soal 4
+        CheckSkorTombol(answerA4, false);   CheckSkorTombol(answerB4, true);  CheckSkorTombol(answerC4, false);
+        // Soal 5
+        CheckSkorTombol(answerA5, false);  CheckSkorTombol(answerB5, true);   CheckSkorTombol(answerC5, false);
+        // Soal 6
+        CheckSkorTombol(answerA6, true);  CheckSkorTombol(answerB6, false);  CheckSkorTombol(answerC6, false);
+        // Soal 7
+        CheckSkorTombol(answerA7, true);   CheckSkorTombol(answerB7, false);  CheckSkorTombol(answerC7, false);
+        // Soal 8
+        CheckSkorTombol(answerA8, true);  CheckSkorTombol(answerB8, false);   CheckSkorTombol(answerC8, false);
+        // Soal 9
+        CheckSkorTombol(answerA9, true);  CheckSkorTombol(answerB9, false);  CheckSkorTombol(answerC9, false);
+        // Soal 10
+        CheckSkorTombol(answerA10, true); CheckSkorTombol(answerB10, false);  CheckSkorTombol(answerC10, false);
+
+        if (txtNilaiFormat != null)
+        {
+            txtNilaiFormat.text = skorBenar.ToString() + "/10";
+        }
+
+        if (txtApresiasi != null)
+        {
+            if (skorBenar >= 1 && skorBenar <= 3) txtApresiasi.text = "Jangan berkecil hati, mari pelajari kembali modul zakat emas/perak dan coba lagi!";
+            else if (skorBenar >= 4 && skorBenar <= 6) txtApresiasi.text = "Cukup baik! Sedikit lagi kamu bisa memahami konsep zakat emas/perak dengan sempurna.";
+            else if (skorBenar >= 7 && skorBenar <= 9) txtApresiasi.text = "Luar biasa! Pemahamanmu mengenai zakat emas/perak sudah sangat matang.";
+            else if (skorBenar == 10) txtApresiasi.text = "Sempurna! Kamu berhasil menjawab seluruh pertanyaan kuis dengan benar!";
+        }
+
+        if (btnUlangiKuis != null) btnUlangiKuis.gameObject.SetActive(true);
+
+        if (skorBenar >= 7)
+        {
+            if (btnLanjutFormUtama != null) btnLanjutFormUtama.gameObject.SetActive(true);
+            if (JurnalManager.instance != null) JurnalManager.instance.isEmasLockedInJurnal = true;
         }
         else
         {
-            if (audioSource != null && wrongSound != null) audioSource.PlayOneShot(wrongSound);
-            StartCoroutine(WrongAnswerEffect(clickedBtn));
+            if (btnLanjutFormUtama != null) btnLanjutFormUtama.gameObject.SetActive(false);
         }
     }
 
-    IEnumerator WrongAnswerEffect(Button btn)
+    void CheckSkorTombol(Button btn, bool isCorrectKey)
     {
-        Image img = btn.GetComponent<Image>();
-        Color origColor = Color.white;
-        Vector3 origPos = btn.transform.localPosition;
-
-        img.color = Color.red;
-        float elapsed = 0f;
-        while (elapsed < 0.2f)
+        if (btn != null && isCorrectKey)
         {
-            float x = Random.Range(-1f, 1f) * 5f;
-            btn.transform.localPosition = new Vector3(origPos.x + x, origPos.y, origPos.z);
-            elapsed += Time.deltaTime;
-            yield return null;
+            if (btn.GetComponent<Image>().color == Color.green)
+            {
+                skorBenar++;
+            }
         }
-        btn.transform.localPosition = origPos;
-        img.color = origColor;
+    }
+
+    void ResetDanUlangiKuis()
+    {
+        Button[] semuaTombol = new Button[] { 
+            answerA1, answerB1, answerC1, answerA2, answerB2, answerC2, answerA3, answerB3, answerC3,
+            answerA4, answerB4, answerC4, answerA5, answerB5, answerC5, answerA6, answerB6, answerC6,
+            answerA7, answerB7, answerC7, answerA8, answerB8, answerC8, answerA9, answerB9, answerC9,
+            answerA10, answerB10, answerC10
+        };
+
+        foreach (Button b in semuaTombol)
+        {
+            if (b != null) b.GetComponent<Image>().color = Color.white;
+        }
+
+        if (panelHasilKuis != null) panelHasilKuis.SetActive(false);
+        InisialisasiAwalKuis();
+    }
+
+    public void TombolCloseBatalKuis()
+    {
+        ResetDanUlangiKuis();
+
+        if (panelKuisBG != null) panelKuisBG.SetActive(false);
+        if (panelFormKuis != null) panelFormKuis.SetActive(false);
+        if (panelReward != null) panelReward.SetActive(false);
+        if (panelHasilKuis != null) panelHasilKuis.SetActive(false);
+
+        if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(gameObject);
+        else gameObject.SetActive(false);
+    }
+
+    // --- TETAP MENJAGA LOGIKA FORM KALKULATOR EMAS PERAK BAWAAN (TIDAK BERUBAH) ---
+    void BukaFormKuis()
+    {   if (audioSource != null && clickSound != null) audioSource.PlayOneShot(clickSound);
+        if (panelKuisBG != null) panelKuisBG.SetActive(false);
+        if (panelFormKuis != null) panelFormKuis.SetActive(true);
+        if (panelHasilKuis != null) panelHasilKuis.SetActive(false);
+
+        ConfigureFormDinamis();
     }
 
     public void ConfigureFormDinamis()
@@ -159,20 +345,17 @@ public class ZakatEmasPerakPanel : MonoBehaviour
         if (isEmasWajib && isPerakWajib)
         {
             txtHartaku.text = $"Emas : {emasSekarang} Gram\nPerak : {perakSekarang} Gram";
-            if (txtDeskripsiZakat != null) 
-                txtDeskripsiZakat.text = "dari total simpanan emas dan perak sebesar 2.5% pada tahun ini sejumlah :";
+            if (txtDeskripsiZakat != null) txtDeskripsiZakat.text = "dari total simpanan emas dan perak sebesar 2.5% pada tahun ini sejumlah :";
         }
         else if (isEmasWajib)
         {
             txtHartaku.text = $"Emas : {emasSekarang} Gram";
-            if (txtDeskripsiZakat != null) 
-                txtDeskripsiZakat.text = "dari total simpanan emas sebesar 2.5% pada tahun ini sejumlah :";
+            if (txtDeskripsiZakat != null) txtDeskripsiZakat.text = "dari total simpanan emas sebesar 2.5% pada tahun ini sejumlah :";
         }
         else if (isPerakWajib)
         {
             txtHartaku.text = $"Perak : {perakSekarang} Gram";
-            if (txtDeskripsiZakat != null) 
-                txtDeskripsiZakat.text = "dari total simpanan perak sebesar 2.5% pada tahun ini sejumlah :";
+            if (txtDeskripsiZakat != null) txtDeskripsiZakat.text = "dari total simpanan perak sebesar 2.5% pada tahun ini sejumlah :";
         }
 
         if (containerZakatEmas != null) containerZakatEmas.SetActive(isEmasWajib);
@@ -182,16 +365,8 @@ public class ZakatEmasPerakPanel : MonoBehaviour
         if (inputZakatPerak != null) inputZakatPerak.text = "";
     }
 
-    void BukaFormKuis()
-    {
-        if (panelKuisBG != null) panelKuisBG.SetActive(false);
-        if (panelFormKuis != null) panelFormKuis.SetActive(true);
-
-        ConfigureFormDinamis();
-    }
-
     public void ValidateZakatEmasPerak()
-    {
+    {   if (audioSource != null && clickSound != null) audioSource.PlayOneShot(clickSound);
         if (MoneyManager.instance == null) return;
 
         bool emasValid = true;
@@ -224,10 +399,7 @@ public class ZakatEmasPerakPanel : MonoBehaviour
         {
             if (audioSource && correctSound) audioSource.PlayOneShot(correctSound);
             
-            if (JurnalManager.instance != null)
-            {
-                JurnalManager.instance.isEmasLockedInJurnal = true;
-            }
+            if (JurnalManager.instance != null) JurnalManager.instance.isEmasLockedInJurnal = true;
             
             if (isEmasWajib && inputZakatEmas != null)
             {
@@ -247,19 +419,9 @@ public class ZakatEmasPerakPanel : MonoBehaviour
                     MoneyManager.instance.RemovePerak(Mathf.RoundToInt(MoneyManager.instance.totalPerak * 0.025f));
             }
 
-            if (panelReward != null) 
-            {
-                panelReward.SetActive(true); 
-            }
-            if (audioSource != null && rewardBacksound != null)
-            {
-                audioSource.PlayOneShot(rewardBacksound);
-            }
-
-            if (panelFormKuis != null) 
-            {
-                panelFormKuis.SetActive(false); 
-            }
+            if (panelReward != null) panelReward.SetActive(true); 
+            if (audioSource != null && rewardBacksound != null) audioSource.PlayOneShot(rewardBacksound);
+            if (panelFormKuis != null) panelFormKuis.SetActive(false); 
         }
         else
         {
@@ -282,7 +444,6 @@ public class ZakatEmasPerakPanel : MonoBehaviour
             ZakatPanelManager.instance.UpdatePaymentButtonVisual();
         }
 
-        // Langsung panggil perpindahan Level 3 utuh
         if (Level3Manager.instance != null)
         {
             Level3Manager.instance.TutupRewardDanMasukLevel3();

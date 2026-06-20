@@ -610,21 +610,29 @@ public class JurnalManager : MonoBehaviour
     {
         if (TokoManager.instance != null)
         {
+            // Ambil data jumlah sapi yang dibeli dari TokoManager
             int sapiDariToko = (int)System.Type.GetType("TokoManager").GetField("jumlahSapiDibeli", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(TokoManager.instance);
             if (sapiDariToko > trackerJumlahSapiToko)
             {
                 int selisihBeli = sapiDariToko - trackerJumlahSapiToko;
-                totalEkorSapiInternal += (selisihBeli * 10); 
+                
+                // 🔄 UBAH DI SINI: Ganti dari 10 menjadi 5
+                totalEkorSapiInternal += (selisihBeli * 5); 
+                
                 trackerJumlahSapiToko = sapiDariToko;
 
                 if (!isSistemSapiBeranakAktif) coSapiBeranak = StartCoroutine(SistemSapiBeranakRoutine());
             }
 
+            // Ambil data jumlah kambing yang dibeli dari TokoManager
             int kambingDariToko = (int)System.Type.GetType("TokoManager").GetField("jumlahKambingDibeli", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(TokoManager.instance);
             if (kambingDariToko > trackerJumlahKambingToko)
             {
                 int selisihBeli = kambingDariToko - trackerJumlahKambingToko;
-                totalEkorKambingInternal += (selisihBeli * 10); 
+                
+                // 🔄 UBAH DI SINI: Ganti dari 10 menjadi 5
+                totalEkorKambingInternal += (selisihBeli * 5); 
+                
                 trackerJumlahKambingToko = kambingDariToko;
 
                 if (!isSistemKambingBeranakAktif) coKambingBeranak = StartCoroutine(SistemKambingBeranakRoutine());
@@ -638,72 +646,105 @@ public class JurnalManager : MonoBehaviour
 
         while (true)
         {
-            yield return new WaitForSeconds(3f); 
+            yield return new WaitForSeconds(5f); // Jeda pengecekan tetap jalan
+
+            // 🛑 FILTER BARU: Tunda pertambahan jika pakan belum diisi/diklaim di TaskManager!
+            if (TaskManager.instance != null && !TaskManager.instance.isIsiPakanDone)
+            {
+                // Jika belum selesai mengisi pakan, skip/lewati bagian kode penambahan di bawahnya
+                continue; 
+            }
 
             if (totalEkorSapiInternal > 0)
             {
-                totalEkorSapiInternal += 5; 
-                if (totalEkorSapiInternal > 200) totalEkorSapiInternal = 200; 
+                totalEkorSapiInternal += 5; //[cite: 5]
+                if (totalEkorSapiInternal > 200) totalEkorSapiInternal = 200; //[cite: 5]
                 
                 Debug.Log($"<color=white>[Jurnal Ternak]</color> Sapi melahirkan! Jumlah sekarang: {totalEkorSapiInternal} ekor.");
+
+                // 📞 HUBUNGKAN KE VISUAL LAPANGAN: Panggil fungsi visual yang kita buat di TokoManager tadi
+                if (TokoManager.instance != null)
+                {
+                    TokoManager.instance.UpdateVisualHewanBerdasarkanJumlah(totalEkorSapiInternal, totalEkorKambingInternal);
+                }
             }
         }
     }
 
-    // 🔥 PERBAIKAN: Variabel disesuaikan dengan 'jumlahTambahanKambing' dan diletakkan di dalam while loop dengan benar
     IEnumerator SistemKambingBeranakRoutine()
     {
         isSistemKambingBeranakAktif = true;
 
         while (true)
         {
-            yield return new WaitForSeconds(intervalBeranakKambing); 
+            yield return new WaitForSeconds(intervalBeranakKambing); //[cite: 5]
+
+            // 🛑 FILTER BARU: Tunda jika pakan belum diisi/diklaim di TaskManager!
+            if (TaskManager.instance != null && !TaskManager.instance.isIsiPakanDone)
+            {
+                continue; 
+            }
 
             if (totalEkorKambingInternal > 0)
             {
-                totalEkorKambingInternal += jumlahTambahanKambing; 
+                totalEkorKambingInternal += jumlahTambahanKambing; //[cite: 5]
                 
                 Debug.Log($"<color=orange>[Jurnal Ternak]</color> Kambing melahirkan! Jumlah sekarang: {totalEkorKambingInternal} ekor.");
+
+                // 📞 HUBUNGKAN KE VISUAL LAPANGAN: Panggil fungsi visual yang kita buat di TokoManager tadi
+                if (TokoManager.instance != null)
+                {
+                    TokoManager.instance.UpdateVisualHewanBerdasarkanJumlah(totalEkorSapiInternal, totalEkorKambingInternal);
+                }
             }
         }
     }
 
     public void OpenJurnal() 
-    { 
-        if (audioSourceJurnal != null && suaraBukaJurnal != null) {
-            audioSourceJurnal.PlayOneShot(suaraBukaJurnal);
-        }
-
-        if (UIManager.instance != null)
-        {
-            UIManager.instance.OpenPanelMenu(jurnalContent);
-        }
-        else
-        {
-            jurnalContent.SetActive(true);
-        }
-
-        if (asetBlur != null) asetBlur.SetActive(true);
-        if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(false);
+{ 
+    if (audioSourceJurnal != null && suaraBukaJurnal != null) {
+        audioSourceJurnal.PlayOneShot(suaraBukaJurnal);
     }
 
-    public void CloseJurnal()
+    if (UIManager.instance != null)
     {
-        if (audioSourceJurnal != null && suaraTutupJurnal != null) {
-            audioSourceJurnal.PlayOneShot(suaraTutupJurnal);
-        }
-
-        if (UIManager.instance != null)
-        {
-            UIManager.instance.ClosePanelMenu(jurnalContent);
-        }
-        else
-        {
-            jurnalContent.SetActive(false);
-        }
-
-        if (asetBlur != null) asetBlur.SetActive(false);
+        UIManager.instance.OpenPanelMenu(jurnalContent);
     }
+    else
+    {
+        jurnalContent.SetActive(true);
+    }
+
+    // 🔥 Force apply blur mandiri milik jurnal dan taruh di paling belakang
+    if (asetBlur != null) {
+        asetBlur.SetActive(true);
+        asetBlur.transform.SetAsFirstSibling(); // urutan paling atas di hierarki = visual paling belakang
+    }
+    
+    // Pastikan halaman buku jurnal didorong ke depan
+    if (jurnalContent != null) jurnalContent.transform.SetAsLastSibling();
+
+    if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(false);
+}
+
+public void CloseJurnal()
+{
+    if (audioSourceJurnal != null && suaraTutupJurnal != null) {
+        audioSourceJurnal.PlayOneShot(suaraTutupJurnal);
+    }
+
+    if (UIManager.instance != null)
+    {
+        UIManager.instance.ClosePanelMenu(jurnalContent);
+    }
+    else
+    {
+        jurnalContent.SetActive(false);
+    }
+
+    // 🔥 Matikan blur mandiri milik jurnal
+    if (asetBlur != null) asetBlur.SetActive(false);
+}
     
     public bool IsPerdaganganUnlocked()
     {

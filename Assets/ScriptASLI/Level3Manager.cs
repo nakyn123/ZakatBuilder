@@ -12,6 +12,7 @@ public class Level3Manager : MonoBehaviour
 
     [Header("UI Level 3 References")]
     public GameObject panelRewardEmasPerak; 
+    public GameObject conversionPanel;
     public GameObject txtPeringatanWilayahObj;
     [HideInInspector] public bool isBabak3Aktif = false;
 
@@ -56,13 +57,20 @@ public class Level3Manager : MonoBehaviour
     public void TutupRewardDanMasukLevel3()
     {
         if (panelRewardEmasPerak != null) panelRewardEmasPerak.SetActive(false);
-        
-        // 🔥 TAMBAHAN: Panggil TaskManager untuk mengaktifkan misi pertama Babak 3 saat masuk Level 3
+
+        // ➕ LANGSUNG MUNCULKAN PANEL KONVERSI DI SINI
+        if (conversionPanel != null)
+        {
+            conversionPanel.SetActive(true);
+        }
+
+        // 1. Panggil TaskManager untuk mengaktifkan misi pertama Babak 3
         if (TaskManager.instance != null)
         {
             TaskManager.instance.MulaiMisiBabak3();
         }
 
+        // 2. Jalankan penutupan panel, perpindahan lingkungan level, dan pembersihan asset
         ZCapitalManagerClosePanel();
     }
 

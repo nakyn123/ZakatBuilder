@@ -39,6 +39,7 @@ public class TaskManager : MonoBehaviour {
     public GameObject barEdaranKades;       
     public Button btnBukaEdaranKades;       
     public GameObject panelEdaranKades;
+    public GameObject asetBlurEdaran;
     
     public TextMeshProUGUI txtIsiEdaranKades; 
     public Button btnCloseEdaranKades;       
@@ -58,6 +59,8 @@ public class TaskManager : MonoBehaviour {
     public Image imgBtnKeToko; 
     public TextMeshProUGUI txtKeToko;
     public int rewardKeToko = 15000;
+    private int beliHewanMisi1Count = 0; // 🔥 Tambahan baru untuk hitungan (0/3)
+    private int targetBeliHewanMisi1 = 3;  // 🔥 Target 3 kali beli
     private bool isKeTokoDone = false;
     private bool isKeTokoClaimed = false;
 
@@ -79,7 +82,7 @@ public class TaskManager : MonoBehaviour {
     public int rewardIsiPakan = 10000; 
     private int isiPakanCount = 0;
     private int targetIsiPakan = 6;
-    private bool isIsiPakanDone = false;
+    public bool isIsiPakanDone = false;
     private bool isIsiPakanClaimed = false; 
 
     [Header("Global UI Settings")]
@@ -99,7 +102,7 @@ public class TaskManager : MonoBehaviour {
 
         if (panelEdaranKades != null) panelEdaranKades.SetActive(false);
         if (barEdaranKades != null) barEdaranKades.SetActive(false);
-
+        if (asetBlurEdaran != null) asetBlurEdaran.SetActive(false);
         if (ikonNotifikasi != null) ikonNotifikasi.SetActive(true);
 
         UpdateMisi1UI();
@@ -259,10 +262,15 @@ public class TaskManager : MonoBehaviour {
 
         if (panelEdaranKades != null) {
             if (misiPanel != null) misiPanel.SetActive(false);
+            // 🔥 Aktifkan blur mandiri milik edaran kades dan taruh di paling belakang
+        if (asetBlurEdaran != null) {
+            asetBlurEdaran.SetActive(true);
+            asetBlurEdaran.transform.SetAsFirstSibling(); // visual paling belakang
+        }
 
-            panelEdaranKades.SetActive(true);
-            if (asetBlur != null) asetBlur.SetActive(true);
-
+        panelEdaranKades.SetActive(true);
+        panelEdaranKades.transform.SetAsLastSibling(); // Surat didorong ke paling depan
+           
             if (btnCloseEdaranKades != null) {
                 btnCloseEdaranKades.gameObject.SetActive(false);
             }
@@ -316,10 +324,7 @@ public class TaskManager : MonoBehaviour {
             } else {
                 panelEdaranKades.SetActive(false);
             }
-            
-            if (asetBlur != null && !misiPanel.activeSelf) {
-                asetBlur.SetActive(false);
-            }
+            if (asetBlurEdaran != null) asetBlurEdaran.SetActive(false);
 
             if (btnBukaEdaranKades != null) {
                 btnBukaEdaranKades.gameObject.SetActive(false); 
@@ -389,24 +394,40 @@ public class TaskManager : MonoBehaviour {
         if (barTebangPohon != null) barTebangPohon.SetActive(false);
         if (barEdaranKades != null) barEdaranKades.SetActive(false);
 
-        if (barKeToko != null) {
-            barKeToko.SetActive(true);
-            barKeToko.transform.SetAsFirstSibling(); 
-        }
-        
+        // --- 1. AKTIFKAN 3 MISI SEKALIGUS ---
+        if (barKeToko != null) barKeToko.SetActive(true);
+        if (barBeliPakan != null) barBeliPakan.SetActive(true);
+        if (barIsiPakan != null) barIsiPakan.SetActive(true);
+
+        // --- 2. URUTKAN HIRARKI UI (Atas ke Bawah) ---
+        if (barKeToko != null) barKeToko.transform.SetAsLastSibling();
+        if (barBeliPakan != null) barBeliPakan.transform.SetAsLastSibling();
+        if (barIsiPakan != null) barIsiPakan.transform.SetAsLastSibling();
+
+        // --- 3. INITIALIZATION VISUAL MISI ---
+        // Misi 1: Pergi ke Toko & Beli Hewan Ternak (0/3)
+        beliHewanMisi1Count = 0; // Reset ke 0 saat masuk babak baru
         if (btnAmbilKeToko != null) btnAmbilKeToko.gameObject.SetActive(true); 
         if (imgBtnKeToko != null) imgBtnKeToko.sprite = btnAbuAbu; 
-        if (txtKeToko != null) txtKeToko.text = "Pergi ke toko & beli hewan ternak";
+        if (txtKeToko != null) txtKeToko.text = $"Pergi ke toko & beli hewan ternak ({beliHewanMisi1Count}/{targetBeliHewanMisi1})";
 
-        if (barBeliPakan != null) barBeliPakan.SetActive(false);
-        if (barIsiPakan != null) barIsiPakan.SetActive(false);
+        // Misi 2: Beli Pakan
+        if (btnAmbilBeliPakan != null) btnAmbilBeliPakan.gameObject.SetActive(true);
+        if (imgBtnBeliPakan != null) imgBtnBeliPakan.sprite = btnAbuAbu;
+        if (txtBeliPakan != null) txtBeliPakan.text = "Beli pakan di toko";
+
+        // Misi 3: Isi Pakan
+        if (btnAmbilIsiPakan != null) btnAmbilIsiPakan.gameObject.SetActive(true);
+        if (imgBtnIsiPakan != null) imgBtnIsiPakan.sprite = btnAbuAbu;
+        if (txtIsiPakan != null) txtIsiPakan.text = "Isi Pakan Hewan di peternakan";
+        isiPakanCount = 0;
 
         if (ikonNotifikasi != null && !misiPanel.activeSelf) {
             ikonNotifikasi.SetActive(true);
         }
     }
 
-    // 🔥 MODIFIKASI: Ambil Hadiah Misi Ke Toko + Efek Koin & Suara
+    // 🔥 MODIFIKASI: Ambil Hadiah Misi Ke Toko tanpa memicu aktivasi bar pakan lagi
     public void KlaimRewardKeToko()
     {
         if (!isKeTokoDone) return; 
@@ -419,21 +440,12 @@ public class TaskManager : MonoBehaviour {
             PlayRewardEffects(rewardKeToko, btnAmbilKeToko.transform);
 
             if (MoneyManager.instance != null) MoneyManager.instance.AddMoney(rewardKeToko); 
-            if (barKeToko != null) barKeToko.SetActive(false);
+            if (barKeToko != null) barKeToko.SetActive(false); // Sembunyikan bar ini setelah diklaim
 
-            if (barBeliPakan != null) barBeliPakan.SetActive(true);
-            if (barIsiPakan != null) barIsiPakan.SetActive(true);
-
-            if (txtBeliPakan != null) txtBeliPakan.text = "Beli pakan di toko";
-            if (txtIsiPakan != null) txtIsiPakan.text = "Isi Pakan Hewan di peternakan";
-
-            isiPakanCount = 0;
-
-            if (btnAmbilBeliPakan != null) btnAmbilBeliPakan.gameObject.SetActive(true);
-            if (imgBtnBeliPakan != null) imgBtnBeliPakan.sprite = btnAbuAbu;
-
-            if (btnAmbilIsiPakan != null) btnAmbilIsiPakan.gameObject.SetActive(true);
-            if (imgBtnIsiPakan != null) imgBtnIsiPakan.sprite = btnAbuAbu;
+            // Catatan: Pemanggilan barBeliPakan dan barIsiPakan .SetActive(true) 
+            // sudah dihapus dari sini karena dipindahkan langsung ke MulaiMisiBabak3()
+            
+            CekSemuaMisiBabak3Selesai();
         }
     }
 
@@ -451,13 +463,24 @@ public class TaskManager : MonoBehaviour {
 
     public void NotifyHewanDibeli()
     {
-        if (!isKeTokoDone)
+        // Hanya berjalan jika misi belum selesai dilakukan
+        if (!isKeTokoDone && barKeToko != null && barKeToko.activeSelf)
         {
-            isKeTokoDone = true;
-            if (txtKeToko != null) txtKeToko.text = "Selesai pergi ke toko & beli hewan ternak!";
+            beliHewanMisi1Count++;
+            if (beliHewanMisi1Count > targetBeliHewanMisi1) beliHewanMisi1Count = targetBeliHewanMisi1;
+
+            // Update teks hitungan secara realtime
+            if (txtKeToko != null) txtKeToko.text = $"Pergi ke toko & beli hewan ternak ({beliHewanMisi1Count}/{targetBeliHewanMisi1})";
             
-            if (imgBtnKeToko != null) imgBtnKeToko.sprite = btnHijauAmbil; 
-            if (ikonNotifikasi != null && !misiPanel.activeSelf) ikonNotifikasi.SetActive(true);
+            // Jika sudah mencapai target 3 kali beli
+            if (beliHewanMisi1Count >= targetBeliHewanMisi1)
+            {
+                isKeTokoDone = true;
+                if (txtKeToko != null) txtKeToko.text = "Selesai pergi ke toko & beli hewan ternak!";
+                if (imgBtnKeToko != null) imgBtnKeToko.sprite = btnHijauAmbil; 
+                
+                if (ikonNotifikasi != null && !misiPanel.activeSelf) ikonNotifikasi.SetActive(true);
+            }
         }
     }
 

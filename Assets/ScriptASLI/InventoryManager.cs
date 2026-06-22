@@ -289,6 +289,14 @@ public class InventoryManager : MonoBehaviour {
             int nilaiPerKoin = (i == 0) ? harga : 0; 
             effect.Init(navCoinTarget, nilaiPerKoin);
         }
+        if (PlayerPrefs.GetInt("Panel18Selesai", 0) == 0) {
+        PlayerPrefs.SetInt("Panel18Selesai", 1);
+        PlayerPrefs.Save();
+
+        if (IntroStoryManager.instance != null) {
+            IntroStoryManager.instance.TriggerPanel18_19SelesaiJual();
+        }
+    }
     }
 
     public void AddPakanDariToko() {

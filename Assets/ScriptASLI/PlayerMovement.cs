@@ -17,6 +17,29 @@ public class PlayerMovement : MonoBehaviour {
     public TouchLookInput rightTouchInput; 
     public float sprintSpeedMultiplier = 2f;
 
+    void Start() {
+        // Jika pemain TIDAK sedang meminta restart game, maka muat koordinat terakhirnya
+        if (PlayerPrefs.GetInt("IsRestarted", 0) == 0 && PlayerPrefs.HasKey("Saved_PlayerX")) {
+            if (controller != null) controller.enabled = false; // Matikan controller sebentar agar tidak bentrok saat teleport
+
+            float x = PlayerPrefs.GetFloat("Saved_PlayerX");
+            float y = PlayerPrefs.GetFloat("Saved_PlayerY");
+            float z = PlayerPrefs.GetFloat("Saved_PlayerZ");
+            transform.position = new Vector3(x, y, z);
+
+            if (controller != null) controller.enabled = true;
+            Debug.Log("<color=green>[PlayerMovement]</color> Berhasil memuat posisi koordinat terakhir player.");
+        }
+    }
+
+    // Fungsi untuk dipanggil oleh PauseMenuManager saat kembali ke Home
+    public void SimpanPosisiPlayer() {
+        PlayerPrefs.SetFloat("Saved_PlayerX", transform.position.x);
+        PlayerPrefs.SetFloat("Saved_PlayerY", transform.position.y);
+        PlayerPrefs.SetFloat("Saved_PlayerZ", transform.position.z);
+        PlayerPrefs.Save();
+        Debug.Log("<color=green>[PlayerMovement]</color> Posisi koordinat player berhasil disimpan.");
+    }
    // Di PlayerMovement.cs
     public void StartHarvesting() {
         if (anim != null) {

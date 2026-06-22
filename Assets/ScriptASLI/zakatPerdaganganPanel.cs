@@ -52,6 +52,9 @@ public class ZakatPerdaganganPanel : MonoBehaviour
     public GameObject panelZakatCarousel; 
     public GameObject panelRewardDagang;
 
+    [Header("Panel Pembatas Level")]
+    public GameObject panelBabLvl2; // Tarik panel bab-lvl2 kamu ke sini di Inspector
+    public Button btnCloseBabLvl2;
     private int currentBabak = 1; 
     private int skorBenar = 0;
     private int jumlahJawabanDiBabakIni = 0;
@@ -320,14 +323,39 @@ public class ZakatPerdaganganPanel : MonoBehaviour
     }
 
     void KlaimRewardDanClose()
-    {   if (audioSource != null && clickSound != null) audioSource.PlayOneShot(clickSound);
+    {   
+        if (audioSource != null && clickSound != null) audioSource.PlayOneShot(clickSound);
         if (MoneyManager.instance != null) MoneyManager.instance.AddPerak(100);
+        
         ZakatPanelManager panelManager = FindFirstObjectByType<ZakatPanelManager>();
         if (panelManager != null) { panelManager.isPerdaganganUnlocked = true; panelManager.UpdatePaymentButton(); panelManager.UpdateItemVisuals(); }
-        if (Level2Manager.instance != null) Level2Manager.instance.SwitchToLevel2();
         
-        if (panelKuisBG != null) panelKuisBG.SetActive(false); 
-        if (panelFormKuis != null) panelFormKuis.SetActive(false); 
+        // 🔥 PERBAIKAN MANUALLY ATTACHED BUTTON X
+        if (panelBabLvl2 != null)
+        {
+            panelBabLvl2.SetActive(true);
+            
+            if (btnCloseBabLvl2 != null)
+            {
+                btnCloseBabLvl2.onClick.RemoveAllListeners();
+                btnCloseBabLvl2.onClick.AddListener(() => {
+                    // Ketika tombol X di panel bab 2 diklik:
+                    panelBabLvl2.SetActive(false);
+                    if (Level2Manager.instance != null) Level2Manager.instance.SwitchToLevel2();
+                });
+            }
+            else
+            {
+                Debug.LogWarning("[Zakat Perdagangan] Kamu belum memasukkan 'Btn Close Bab Lvl 2' di Inspector!");
+            }
+        }
+        else
+        {
+            if (Level2Manager.instance != null) Level2Manager.instance.SwitchToLevel2();
+        }
+        
+        if (panelKuisBG != null) panelKuisBG.SetActive(false);
+        if (panelFormKuis != null) panelFormKuis.SetActive(false);
         if (panelRewardDagang != null) panelRewardDagang.SetActive(false);
         if (panelHasilKuis != null) panelHasilKuis.SetActive(false);
         gameObject.SetActive(false);

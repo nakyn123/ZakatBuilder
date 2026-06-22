@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.UI; // 🔥 TAMBAHKAN BARIS INI AGAR 'Button' DIKENALI
+using TMPro;
 
 public class Level3Manager : MonoBehaviour
 {
@@ -16,6 +18,9 @@ public class Level3Manager : MonoBehaviour
     public GameObject txtPeringatanWilayahObj;
     [HideInInspector] public bool isBabak3Aktif = false;
 
+    [Header("Panel Pembatas Level 3")]
+    public GameObject panelBabLvl3; // Tarik panel bab-lvl3 kamu ke sini di Inspector
+    public Button btnCloseBabLvl3;
     void Awake()
     {
         instance = this;
@@ -54,24 +59,57 @@ public class Level3Manager : MonoBehaviour
         }
     }
 
-    public void TutupRewardDanMasukLevel3()
+   public void TutupRewardDanMasukLevel3()
     {
+        // 🔥 TAMBAHAN: Tutup langsung Carousel Zakat Umum agar background-nya kembali menjadi gameplay murni
+        if (ZakatPanelManager.instance != null)
+        {
+            ZakatPanelManager.instance.CloseZakatPanel();
+        }
+
         if (panelRewardEmasPerak != null) panelRewardEmasPerak.SetActive(false);
 
-        // ➕ LANGSUNG MUNCULKAN PANEL KONVERSI DI SINI
-        if (conversionPanel != null)
+        // LOGIKA DENGAN BUTTON CLOSE MANUAl (X)
+        if (panelBabLvl3 != null)
         {
-            conversionPanel.SetActive(true);
-        }
+            panelBabLvl3.SetActive(true);
 
-        // 1. Panggil TaskManager untuk mengaktifkan misi pertama Babak 3
+            if (btnCloseBabLvl3 != null)
+            {
+                btnCloseBabLvl3.onClick.RemoveAllListeners();
+                btnCloseBabLvl3.onClick.AddListener(() => {
+                    panelBabLvl3.SetActive(false);
+                    
+                    if (conversionPanel != null)
+                    {
+                        conversionPanel.SetActive(true);
+                    }
+
+                    MulaiLogikaMasukLevel3Akhir();
+                });
+            }
+            else
+            {
+                Debug.LogWarning("[Level 3 Manager] Kamu belum memasukkan 'Btn Close Bab Lvl 3' di Inspector!");
+                if (conversionPanel != null) conversionPanel.SetActive(true);
+                MulaiLogikaMasukLevel3Akhir();
+            }
+        }
+        else
+        {
+            if (conversionPanel != null) conversionPanel.SetActive(true);
+            MulaiLogikaMasukLevel3Akhir();
+        }
+    }
+
+    // Fungsi pembantu baru untuk merapikan urutan sisa eksekusi Level 3
+    private void MulaiLogikaMasukLevel3Akhir()
+    {
         if (TaskManager.instance != null)
         {
-            TaskManager.instance.MulaiMisiBabak3();
+            TaskManager.instance.MulaiMisiBabak3(); //[cite: 10]
         }
-
-        // 2. Jalankan penutupan panel, perpindahan lingkungan level, dan pembersihan asset
-        ZCapitalManagerClosePanel();
+        ZCapitalManagerClosePanel(); //[cite: 10]
     }
 
     private void ZCapitalManagerClosePanel()

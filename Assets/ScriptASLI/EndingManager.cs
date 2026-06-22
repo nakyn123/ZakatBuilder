@@ -74,10 +74,15 @@ public class EndingManager : MonoBehaviour
     {
         yield return new WaitForSeconds(delaySebelumEnding);
 
+        // 🔥 TAMBAHAN: Tutup HUD Utama saat sekuens ending dimulai
+        if (IntroStoryManager.instance != null && IntroStoryManager.instance.hudGameplay != null)
+        {
+            IntroStoryManager.instance.hudGameplay.SetActive(false);
+        }
+
         if (panelEndingUtama != null) panelEndingUtama.SetActive(true);
         if (rectAmplopTutup != null) rectAmplopTutup.anchoredPosition = posisiStartAmplop;
 
-        // Play sound ketika adegan amplop mulai muncul dari bawah ke atas
         if (audioSource != null && suaraAmplopDatang != null)
             audioSource.PlayOneShot(suaraAmplopDatang);
 
@@ -106,9 +111,22 @@ public class EndingManager : MonoBehaviour
         if (rectAmplopTutup != null) rectAmplopTutup.anchoredPosition = posisiEndAmplop;
         if (canvasGroupBlur != null) canvasGroupBlur.alpha = 1f;
 
-        // ❌ Suara amplop sampai dihapus dari sini karena dipindah ke saat amplop buka aktif
-
         if (btnBukaAmplop != null) btnBukaAmplop.gameObject.SetActive(true);
+    }
+
+    private void KlikKeHome()
+    {
+        if (btnKeHome != null) btnKeHome.interactable = false;
+
+        if (audioSource != null && suaraKlikHome != null)
+            audioSource.PlayOneShot(suaraKlikHome);
+
+        // 🔥 TAMBAHAN: AUTO RESET SELURUH HISTORY PERMAINAN KARENA GAME SUDAH TAMAT
+        Debug.Log("<color=red>[Ending Manager]</color> Game Selesai! Membersihkan data penyimpanan agar aman dimainkan kembali...");
+        PlayerPrefs.DeleteAll(); 
+        PlayerPrefs.Save();
+
+        StartCoroutine(PindahSceneCoroutine());
     }
 
     private IEnumerator GetarDanBoomCoroutine()
@@ -178,16 +196,6 @@ public class EndingManager : MonoBehaviour
             audioSource.PlayOneShot(suaraKlikBukaAmplop);
 
         StartCoroutine(GetarDanBoomCoroutine());
-    }
-
-    private void KlikKeHome()
-    {
-        if (btnKeHome != null) btnKeHome.interactable = false;
-
-        if (audioSource != null && suaraKlikHome != null)
-            audioSource.PlayOneShot(suaraKlikHome);
-
-        StartCoroutine(PindahSceneCoroutine());
     }
 
     private IEnumerator PindahSceneCoroutine()

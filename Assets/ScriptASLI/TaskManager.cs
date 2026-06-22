@@ -96,16 +96,251 @@ public class TaskManager : MonoBehaviour {
     void Start() {
         if (misiPanel != null) misiPanel.SetActive(false);
         if (asetBlur != null) asetBlur.SetActive(false);
-        
         if (barTebangPohon != null) barTebangPohon.SetActive(false); 
-        isMisi2Started = false; 
-
         if (panelEdaranKades != null) panelEdaranKades.SetActive(false);
         if (barEdaranKades != null) barEdaranKades.SetActive(false);
         if (asetBlurEdaran != null) asetBlurEdaran.SetActive(false);
-        if (ikonNotifikasi != null) ikonNotifikasi.SetActive(true);
+        
+        isMisi2Started = false; 
 
+        // Jalankan pengecekan awal via coroutine biar aman dari NullReferenceException
+        StartCoroutine(JalankanPengecekanAwalGame());
+    }
+
+    private IEnumerator JalankanPengecekanAwalGame()
+    {
+        // Tunggu 1 frame agar seluruh file Manager (Awake) selesai loading di memori
+        yield return new WaitForEndOfFrame();
+
+        // Ambil status penanda restart dari Menu Home
+        if (PlayerPrefs.GetInt("IsRestarted", 0) == 1)
+        {
+            ResetSeluruhProgressMisi();
+            PlayerPrefs.SetInt("IsRestarted", 0);
+            PlayerPrefs.Save();
+        }
+        else
+        {
+            LoadProgressMisiTerakhir();
+        }
+
+        if (ikonNotifikasi != null) ikonNotifikasi.SetActive(true);
         UpdateMisi1UI();
+    }
+
+    private void ResetSeluruhProgressMisi()
+    {
+        Debug.Log("<color=yellow>[TaskManager]</color> Scene Gameplay Mendeteksi Restart. Mengembalikan posisi objek ke awal...");
+        
+        // 1. Reset Variabel Internal TaskManager
+        woodOffset = 0; //
+        isMisi2Started = false; //
+        isJualDone = false; //
+        isMisi1Claimed = false; //
+        isTebangDone = false; //
+        isMisi2Claimed = false; //
+        beliHewanMisi1Count = 0; //
+        isKeTokoDone = false; //
+        isKeTokoClaimed = false; //
+        isBeliPakanDone = false; //
+        isBeliPakanClaimed = false; //
+        isiPakanCount = 0; //
+        isIsiPakanDone = false; //
+        isIsiPakanClaimed = false; //
+
+        // 2. Reset Data Keuangan Pemain (MoneyManager)
+        if (MoneyManager.instance != null) //
+        {
+            MoneyManager.instance.totalMoney = 0; //
+            MoneyManager.instance.totalEmas = 0; //
+            MoneyManager.instance.totalPerak = 0; //
+            MoneyManager.instance.UpdateEmasPerakUI();  //
+        }
+
+        // 3. Reset Isi Kantong Tas (InventoryManager)
+        if (InventoryManager.instance != null) //
+        {
+            InventoryManager.instance.woodKecilCount = 0; //
+            InventoryManager.instance.woodSedangCount = 0; //
+            InventoryManager.instance.woodBesarCount = 0; //
+            InventoryManager.instance.asetEmasCount = 0; //
+            InventoryManager.instance.asetPerakCount = 0; //
+            InventoryManager.instance.pakanRumputCount = 0; //
+            InventoryManager.instance.totalWoodCollected = 0; //
+            InventoryManager.instance.UpdateUI();  //
+        }
+
+        // 4. Reset Sistem & Keadaan Panel Zakat (ZakatPanelManager)
+        if (ZakatPanelManager.instance != null) //
+        {
+            ZakatPanelManager.instance.isPerdaganganUnlocked = false; //
+            ZakatPanelManager.instance.isEmasPerakUnlocked = false; //
+            ZakatPanelManager.instance.isPeternakanUnlocked = false; //
+            ZakatPanelManager.instance.isPerdaganganCompleted = false; //
+            ZakatPanelManager.instance.isEmasPerakCompleted = false; //
+            ZakatPanelManager.instance.isPeternakanCompleted = false; //
+            ZakatPanelManager.instance.UpdateCheckmarkVisuals();  //
+        }
+
+        // 5. 🏃‍♂️ TELEPORT PLAYER KE KOORDINAT SPAWN AWAL (HALAMAN FARM)
+        GameObject player = GameObject.FindGameObjectWithTag("Player"); 
+        if (player != null) 
+        {
+            CharacterController cc = player.GetComponent<CharacterController>(); 
+            if (cc != null) cc.enabled = false;  
+
+            // 🔥 MASUKKAN KOORDINAT FARM KAMU DI SINI (Ganti angka di bawah sesuai Inspector Unity-mu)
+            player.transform.position = new Vector3(8.751f, 0.44f, -64.016f);  
+            
+            // Atur rotasi hadapan player saat bangun (Quaternion.Euler(Y, X, Z))
+            // Angka 180f berarti player otomatis menghadap membelakangi rumah/menghadap jalan
+            player.transform.rotation = Quaternion.Euler(0f, 0f, 0f); 
+
+            if (cc != null) cc.enabled = true;
+            
+            // 6. 🎥 RESET POSISI KAMERA CINEMACHINE BIAR SINKRON DI BELAKANG PLAYER
+            // Mencari objek dengan komponen PlayerMovement untuk mengakses transform kamera pendukung
+            PlayerMovement pm = player.GetComponent<PlayerMovement>();
+            if (pm != null && pm.cameraTransform != null)
+            {
+                // Mengatur rotasi target orbit kamera Cinemachine kembali menghadap ke depan default
+                // (Mencegah kamera melintir ke sudut aneh sisa game sebelumnya)
+                pm.cameraTransform.position = new Vector3(0, 2f, -5f); 
+                pm.cameraTransform.rotation = Quaternion.identity;
+            }
+        }
+
+        // 7. Reset Pembukuan Jurnal Balik Terkunci Semula (JurnalManager)
+        if (JurnalManager.instance != null) //
+        {
+            JurnalManager.instance.isNisabReached = false; //
+            JurnalManager.instance.isHaulComplete = false; //
+            JurnalManager.instance.isZakatPaid = false; //
+            JurnalManager.instance.isDagangLockedInJurnal = false; //
+            if (JurnalManager.instance.haulSlider != null) JurnalManager.instance.haulSlider.value = 0f; //
+
+            JurnalManager.instance.isEmasPerakNisabReached = false; //
+            JurnalManager.instance.isEmasPerakHaulComplete = false; //
+            JurnalManager.instance.isEmasPerakZakatPaid = false; //
+            JurnalManager.instance.isEmasLockedInJurnal = false; //
+            if (JurnalManager.instance.visualHalamanLock != null) JurnalManager.instance.visualHalamanLock.SetActive(true); //
+            if (JurnalManager.instance.visualHalamanUnlock != null) JurnalManager.instance.visualHalamanUnlock.SetActive(false); //
+            if (JurnalManager.instance.navCoinLeftPanel != null) JurnalManager.instance.navCoinLeftPanel.SetActive(false); //
+            if (JurnalManager.instance.haulSliderEmasPerak != null) JurnalManager.instance.haulSliderEmasPerak.value = 0f; //
+
+            JurnalManager.instance.isTernakNisabReached = false; //
+            JurnalManager.instance.isTernakHaulComplete = false; //
+            JurnalManager.instance.isTernakZakatPaid = false; //
+            JurnalManager.instance.isTernakLockedInJurnal = false; //
+            if (JurnalManager.instance.panelLockTernak != null) JurnalManager.instance.panelLockTernak.SetActive(true); //
+            if (JurnalManager.instance.panelUnlockTernak != null) JurnalManager.instance.panelUnlockTernak.SetActive(false); //
+            if (JurnalManager.instance.haulSliderTernak != null) JurnalManager.instance.haulSliderTernak.value = 0f; //
+
+            JurnalManager.instance.MatikanSistemBeranak();  //
+            JurnalManager.instance.StopAllCoroutines(); //
+            JurnalManager.instance.ShowPage(1);  //
+        }
+    }
+
+    // --- FUNGSI LOAD DATA JIKA MELANJUTKAN GAME ---
+    private void LoadProgressMisiTerakhir()
+    {
+        Debug.Log("<color=green>[TaskManager]</color> Melanjutkan game dari data terakhir.");
+
+        // 1. Muat Progress Misi dari PlayerPrefs (Default kembali ke Misi 1 jika baru pertama main)
+        isMisi1Claimed = PlayerPrefs.GetInt("Saved_IsMisi1Claimed", 0) == 1;
+        isJualDone = PlayerPrefs.GetInt("Saved_IsJualDone", 0) == 1;
+        isMisi2Started = PlayerPrefs.GetInt("Saved_IsMisi2Started", 0) == 1;
+        isTebangDone = PlayerPrefs.GetInt("Saved_IsTebangDone", 0) == 1;
+        isMisi2Claimed = PlayerPrefs.GetInt("Saved_IsMisi2Claimed", 0) == 1;
+        
+        // Babak 3
+        isKeTokoDone = PlayerPrefs.GetInt("Saved_IsKeTokoDone", 0) == 1;
+        isKeTokoClaimed = PlayerPrefs.GetInt("Saved_IsKeTokoClaimed", 0) == 1;
+        beliHewanMisi1Count = PlayerPrefs.GetInt("Saved_BeliHewanCount", 0);
+        isBeliPakanDone = PlayerPrefs.GetInt("Saved_IsBeliPakanDone", 0) == 1;
+        isBeliPakanClaimed = PlayerPrefs.GetInt("Saved_IsBeliPakanClaimed", 0) == 1;
+        isiPakanCount = PlayerPrefs.GetInt("Saved_IsiPakanCount", 0);
+        isIsiPakanDone = PlayerPrefs.GetInt("Saved_IsIsiPakanDone", 0) == 1;
+        isIsiPakanClaimed = PlayerPrefs.GetInt("Saved_IsIsiPakanClaimed", 0) == 1;
+
+        // 2. Muat Nilai Offset Kayu & Uang Terakhir
+        woodOffset = PlayerPrefs.GetInt("Saved_WoodOffset", 0);
+        if (MoneyManager.instance != null)
+        {
+            MoneyManager.instance.totalMoney = PlayerPrefs.GetInt("JumlahUangPemain", 0);
+            MoneyManager.instance.totalEmas = PlayerPrefs.GetInt("EmasPemain", 0);
+            MoneyManager.instance.totalPerak = PlayerPrefs.GetInt("Saved_PerakPemain", 0);
+            MoneyManager.instance.UpdateEmasPerakUI();
+        }
+
+        if (InventoryManager.instance != null)
+        {
+            InventoryManager.instance.woodKecilCount = PlayerPrefs.GetInt("Saved_WoodKecil", 0);
+            InventoryManager.instance.woodSedangCount = PlayerPrefs.GetInt("Saved_WoodSedang", 0);
+            InventoryManager.instance.woodBesarCount = PlayerPrefs.GetInt("Saved_WoodBesar", 0);
+            InventoryManager.instance.asetEmasCount = PlayerPrefs.GetInt("Saved_AsetEmas", 0);
+            InventoryManager.instance.asetPerakCount = PlayerPrefs.GetInt("Saved_AsetPerak", 0);
+            InventoryManager.instance.pakanRumputCount = PlayerPrefs.GetInt("Saved_PakanRumput", 0);
+            InventoryManager.instance.totalWoodCollected = PlayerPrefs.GetInt("TotalKayuDitebang", 0);
+            InventoryManager.instance.UpdateUI();
+        }
+
+        // 3. Setel Keaktifan Bar UI Sesuai Progress yang Dimuat
+        if (barTebangJual != null) barTebangJual.SetActive(!isMisi1Claimed);
+        if (barTebangPohon != null) barTebangPohon.SetActive(isMisi2Started && !isMisi2Claimed);
+        
+        // Pemicu Babak 3 jika sudah masuk jalurnya
+        if (isMisi2Claimed && !isIsiPakanClaimed)
+        {
+            if (barKeToko != null) barKeToko.SetActive(!isKeTokoClaimed);
+            if (barBeliPakan != null) barBeliPakan.SetActive(!isBeliPakanClaimed);
+            if (barIsiPakan != null) barIsiPakan.SetActive(!isIsiPakanClaimed);
+        }
+    }
+
+    // --- FUNGSI AUTO SAVE (PANGGIL SETIAP KALI PROGRESS BERUBAH) ---
+    public void SimpanProgressGameKeKomputer()
+    {
+        // Simpan Status Booleans Alur Misi
+        PlayerPrefs.SetInt("Saved_IsMisi1Claimed", isMisi1Claimed ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsJualDone", isJualDone ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsMisi2Started", isMisi2Started ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsTebangDone", isTebangDone ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsMisi2Claimed", isMisi2Claimed ? 1 : 0);
+        
+        PlayerPrefs.SetInt("Saved_IsKeTokoDone", isKeTokoDone ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsKeTokoClaimed", isKeTokoClaimed ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_BeliHewanCount", beliHewanMisi1Count);
+        PlayerPrefs.SetInt("Saved_IsBeliPakanDone", isBeliPakanDone ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsBeliPakanClaimed", isBeliPakanClaimed ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsiPakanCount", isiPakanCount);
+        PlayerPrefs.SetInt("Saved_IsIsiPakanDone", isIsiPakanDone ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsIsiPakanClaimed", isIsiPakanClaimed ? 1 : 0);
+
+        PlayerPrefs.SetInt("Saved_WoodOffset", woodOffset);
+
+        // Simpan Aset Keuangan Permanen
+        if (MoneyManager.instance != null)
+        {
+            PlayerPrefs.SetInt("JumlahUangPemain", MoneyManager.instance.totalMoney);
+            PlayerPrefs.SetInt("EmasPemain", MoneyManager.instance.totalEmas);
+            PlayerPrefs.SetInt("Saved_PerakPemain", MoneyManager.instance.totalPerak);
+        }
+
+        // Simpan Aset Tas Inventory Permanen
+        if (InventoryManager.instance != null)
+        {
+            PlayerPrefs.SetInt("Saved_WoodKecil", InventoryManager.instance.woodKecilCount);
+            PlayerPrefs.SetInt("Saved_WoodSedang", InventoryManager.instance.woodSedangCount);
+            PlayerPrefs.SetInt("Saved_WoodBesar", InventoryManager.instance.woodBesarCount);
+            PlayerPrefs.SetInt("Saved_AsetEmas", InventoryManager.instance.asetEmasCount);
+            PlayerPrefs.SetInt("Saved_AsetPerak", InventoryManager.instance.asetPerakCount);
+            PlayerPrefs.SetInt("Saved_PakanRumput", InventoryManager.instance.pakanRumputCount);
+            PlayerPrefs.SetInt("TotalKayuDitebang", InventoryManager.instance.totalWoodCollected);
+        }
+
+        PlayerPrefs.Save();
     }
 
     public void OpenMisi() {
@@ -201,6 +436,16 @@ public class TaskManager : MonoBehaviour {
     }
 
     public void UpdateTebangProgress(int totalCount) {
+        // 🔥 PERBAIKAN UTAMA: Pindahkan ke baris paling atas agar tebangan pertama di Misi 1 langsung memicu cerita
+        if (totalCount >= 1 && PlayerPrefs.GetInt("Panel17Selesai", 0) == 0) {
+            PlayerPrefs.SetInt("Panel17Selesai", 1);
+            PlayerPrefs.Save();
+
+            if (IntroStoryManager.instance != null) {
+                IntroStoryManager.instance.TriggerPanel17SelesaiTebang();
+            }
+        }
+
         if (isMisi2Claimed) return; 
 
         if (barTebangPohon != null && barTebangPohon.activeSelf && isMisi2Started) {
@@ -211,7 +456,8 @@ public class TaskManager : MonoBehaviour {
             sliderTebang.value = progressMisiSekarang;
             txtTebang.text = "Tebang Pohon (" + progressMisiSekarang.ToString() + "/" + targetTebang.ToString() + ")";
 
-            // 🔥 TAMBAHAN BARU: Cek jika progress tebang sudah menyentuh atau melewati 15 kayu
+            // Baris deteksi yang lama di sini bisa dihapus karena sudah dipindahkan ke atas!
+
             if (progressMisiSekarang >= 15) {
                 if (ReminderManager.instance != null) {
                     ReminderManager.instance.TriggerJualKayuReminder();

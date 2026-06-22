@@ -100,26 +100,29 @@ public class JurnalManager : MonoBehaviour
     private bool isSistemSapiBeranakAktif = false;
     private bool isSistemKambingBeranakAktif = false;
 
-    private int currentHaulMonth = 0;
-    private bool isNisabReached = false;
-    private bool isHaulComplete = false;
-    private bool isNotificationShown = false;
-    private bool isDagangCoroutineRunning = false;
+    [HideInInspector] public int currentHaulMonth = 0;
+    [HideInInspector] public bool isNisabReached = false;
+    [HideInInspector] public bool isHaulComplete = false;
+    [HideInInspector] public bool isZakatPaid = false; // 🔥 TAMBAHKAN INI yang kurang
+    [HideInInspector] public bool isNotificationShown = false;
+    [HideInInspector] public bool isDagangCoroutineRunning = false;
 
-    private int currentHaulMonthEmasPerak = 0;
-    private bool isEmasPerakNisabReached = false;
-    private bool isEmasPerakHaulComplete = false;
-    private bool isEmasPerakUnlocked = false;
-    private bool isEmasPerakNotificationShown = false;
-    private bool isEmasPerakCoroutineRunning = false;
+    [HideInInspector] public int currentHaulMonthEmasPerak = 0;
+    [HideInInspector] public bool isEmasPerakNisabReached = false;
+    [HideInInspector] public bool isEmasPerakHaulComplete = false;
+    [HideInInspector] public bool isEmasPerakZakatPaid = false; // 🔥 TAMBAHKAN INI yang kurang
+    [HideInInspector] public bool isEmasPerakUnlocked = false;
+    [HideInInspector] public bool isEmasPerakNotificationShown = false;
+    [HideInInspector] public bool isEmasPerakCoroutineRunning = false;
 
     // State Logic untuk Halaman 3 (Zakat Ternak)
-    private int currentHaulMonthTernak = 0;
-    private bool isTernakNisabReached = false;
-    private bool isTernakHaulComplete = false;
-    private bool isTernakUnlocked = false;
-    private bool isTernakNotificationShown = false;
-    private bool isTernakCoroutineRunning = false;
+    [HideInInspector] public int currentHaulMonthTernak = 0;
+    [HideInInspector] public bool isTernakNisabReached = false;
+    [HideInInspector] public bool isTernakHaulComplete = false;
+    [HideInInspector] public bool isTernakZakatPaid = false; // 🔥 TAMBAHKAN INI yang kurang
+    [HideInInspector] public bool isTernakUnlocked = false;
+    [HideInInspector] public bool isTernakNotificationShown = false;
+    [HideInInspector] public bool isTernakCoroutineRunning = false;
     private Coroutine coSapiBeranak = null;
     private Coroutine coKambingBeranak = null;
 
@@ -335,7 +338,7 @@ public class JurnalManager : MonoBehaviour
         isTernakCoroutineRunning = false;
     }
 
-    void NextPage()
+    public void NextPage()
     {
         if (currentPage < 3)
         {
@@ -344,7 +347,7 @@ public class JurnalManager : MonoBehaviour
         }
     }
 
-    void PreviousPage()
+    public void PreviousPage()
     {
         if (currentPage > 1)
         {
@@ -353,7 +356,7 @@ public class JurnalManager : MonoBehaviour
         }
     }
 
-    void ShowPage(int pageNumber)
+    public void ShowPage(int pageNumber)
     {
         groupZakatPerdagangan.SetActive(false);
         groupZakatEmasPerak.SetActive(false);

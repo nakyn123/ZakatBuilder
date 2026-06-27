@@ -22,6 +22,9 @@ public class JurnalManager : MonoBehaviour
 
     private int currentPage = 1; 
 
+    [Header("Halaman 1: Peta Jurnal")]
+    public GameObject groupPetaJurnal;
+
     [Header("Halaman 1: Zakat Perdagangan")]
     public GameObject groupZakatPerdagangan; 
     public GameObject checkNisab;
@@ -340,7 +343,7 @@ public class JurnalManager : MonoBehaviour
 
     public void NextPage()
     {
-        if (currentPage < 3)
+        if (currentPage < 4) // Berubah dari < 3 menjadi < 4
         {
             currentPage++;
             ShowPage(currentPage);
@@ -358,26 +361,33 @@ public class JurnalManager : MonoBehaviour
 
     public void ShowPage(int pageNumber)
     {
+        if (groupPetaJurnal != null) groupPetaJurnal.SetActive(false);
         groupZakatPerdagangan.SetActive(false);
         groupZakatEmasPerak.SetActive(false);
         groupZakatTernak.SetActive(false);
 
         if (pageNumber == 1)
         {
-            groupZakatPerdagangan.SetActive(true);
+            if (groupPetaJurnal != null) groupPetaJurnal.SetActive(true);
             btnNext.gameObject.SetActive(true);
-            btnPrevious.gameObject.SetActive(false);
+            btnPrevious.gameObject.SetActive(false); // Halaman pertama tidak bisa mundur
         }
         else if (pageNumber == 2)
         {
-            groupZakatEmasPerak.SetActive(true);
+            groupZakatPerdagangan.SetActive(true);
             btnNext.gameObject.SetActive(true);
             btnPrevious.gameObject.SetActive(true);
         }
         else if (pageNumber == 3)
         {
+            groupZakatEmasPerak.SetActive(true);
+            btnNext.gameObject.SetActive(true);
+            btnPrevious.gameObject.SetActive(true);
+        }
+        else if (pageNumber == 4)
+        {
             groupZakatTernak.SetActive(true);
-            btnNext.gameObject.SetActive(false); 
+            btnNext.gameObject.SetActive(false); // Halaman terakhir tidak bisa maju lagi
             btnPrevious.gameObject.SetActive(true);
         }
     }
@@ -593,7 +603,8 @@ public class JurnalManager : MonoBehaviour
     // 🔥 PERBAIKAN: Kode pememicu coroutine dipindah ke atas sebelum baris 'return' agar tidak Unreachable
     public int GetJumlahSapiRealTime()
     {
-        if (!isSistemSapiBeranakAktif && totalEkorSapiInternal > 0) 
+        // 🔥 PERBAIKAN: Jika sedang dikunci (buka form kuis), JANGAN nyalakan coroutine lagi!
+        if (!isSistemSapiBeranakAktif && totalEkorSapiInternal > 0 && !isTernakLockedInJurnal) 
         {
             coSapiBeranak = StartCoroutine(SistemSapiBeranakRoutine());
         }
@@ -602,7 +613,8 @@ public class JurnalManager : MonoBehaviour
 
     public int GetJumlahKambingRealTime()
     {
-        if (!isSistemKambingBeranakAktif && totalEkorKambingInternal > 0) 
+        // 🔥 PERBAIKAN: Jika sedang dikunci (buka form kuis), JANGAN nyalakan coroutine lagi!
+        if (!isSistemKambingBeranakAktif && totalEkorKambingInternal > 0 && !isTernakLockedInJurnal) 
         {
             coKambingBeranak = StartCoroutine(SistemKambingBeranakRoutine());
         }
@@ -660,12 +672,24 @@ public class JurnalManager : MonoBehaviour
 
             if (totalEkorSapiInternal > 0)
             {
-                totalEkorSapiInternal += 5; //[cite: 5]
-                if (totalEkorSapiInternal > 200) totalEkorSapiInternal = 200; //[cite: 5]
-                
-                Debug.Log($"<color=white>[Jurnal Ternak]</color> Sapi melahirkan! Jumlah sekarang: {totalEkorSapiInternal} ekor.");
+                // 🔥 STRATEGI BARU: Jika angka ganjil/tanggung (misal 5, 15, 25), bulatkan dulu ke kelipatan 10 di atasnya
+                if (totalEkorSapiInternal % 10 != 0)
+                {
+                    // Contoh: 25 -> 25 + (10 - 5) = 30
+                    totalEkorSapiInternal += (10 - (totalEkorSapiInternal % 10));
+                }
+                else
+                {
+                    // Jika sudah kelipatan 10, naik normal +10
+                    totalEkorSapiInternal += 10;
+                }
 
-                // 📞 HUBUNGKAN KE VISUAL LAPANGAN: Panggil fungsi visual yang kita buat di TokoManager tadi
+                // Batasi maksimal sesuai batas awal script-mu
+                if (totalEkorSapiInternal > 200) totalEkorSapiInternal = 200;
+                
+                Debug.Log($"<color=white>[Jurnal Ternak]</color> Sapi melahirkan (Kelipatan 10)! Jumlah sekarang: {totalEkorSapiInternal} ekor.");
+
+                // 📞 HUBUNGKAN KE VISUAL LAPANGAN
                 if (TokoManager.instance != null)
                 {
                     TokoManager.instance.UpdateVisualHewanBerdasarkanJumlah(totalEkorSapiInternal, totalEkorKambingInternal);

@@ -4,23 +4,24 @@ public class PlayerMovement : MonoBehaviour {
     public CharacterController controller;
     public float speed = 5f;
     public Joystick joystick; 
-    
-    // 1. Tambahkan referensi kamera
     public Transform cameraTransform; 
     
     private float gravity = -9.81f;
     private Vector3 velocity;
     public Animator anim;
     public AudioSource walkAudioSource;
+
+    [Header("Weapon Settings")]
+    public GameObject kapakObject; 
+    public GameObject beliungObject;
+
     [Header("Sprint System")]
-    [Tooltip("Hubungkan script TouchLookInput dari objek kanan ke sini")]
     public TouchLookInput rightTouchInput; 
     public float sprintSpeedMultiplier = 2f;
 
     void Start() {
-        // Jika pemain TIDAK sedang meminta restart game, maka muat koordinat terakhirnya
         if (PlayerPrefs.GetInt("IsRestarted", 0) == 0 && PlayerPrefs.HasKey("Saved_PlayerX")) {
-            if (controller != null) controller.enabled = false; // Matikan controller sebentar agar tidak bentrok saat teleport
+            if (controller != null) controller.enabled = false; 
 
             float x = PlayerPrefs.GetFloat("Saved_PlayerX");
             float y = PlayerPrefs.GetFloat("Saved_PlayerY");
@@ -30,9 +31,10 @@ public class PlayerMovement : MonoBehaviour {
             if (controller != null) controller.enabled = true;
             Debug.Log("<color=green>[PlayerMovement]</color> Berhasil memuat posisi koordinat terakhir player.");
         }
+        if (kapakObject != null) kapakObject.SetActive(false);
+        if (beliungObject != null) beliungObject.SetActive(false);
     }
 
-    // Fungsi untuk dipanggil oleh PauseMenuManager saat kembali ke Home
     public void SimpanPosisiPlayer() {
         PlayerPrefs.SetFloat("Saved_PlayerX", transform.position.x);
         PlayerPrefs.SetFloat("Saved_PlayerY", transform.position.y);
@@ -40,93 +42,109 @@ public class PlayerMovement : MonoBehaviour {
         PlayerPrefs.Save();
         Debug.Log("<color=green>[PlayerMovement]</color> Posisi koordinat player berhasil disimpan.");
     }
-   // Di PlayerMovement.cs
+
     public void StartHarvesting() {
         if (anim != null) {
             anim.SetBool("isHarvesting", true);
+            anim.speed = 1.5f; 
+        }
+        if (kapakObject != null) {
+            kapakObject.SetActive(true);
         }
     }
 
     public void StopHarvesting() {
         if (anim != null) {
             anim.SetBool("isHarvesting", false);
+            anim.speed = 1f; 
+        }
+        if (kapakObject != null) {
+            kapakObject.SetActive(false);
         }
     }
+
+    public void StartMining() {
+        if (anim != null) {
+            anim.SetBool("isMining", true); 
+            anim.speed = 2.5f; 
+        }
+        if (beliungObject != null) {
+            beliungObject.SetActive(true); 
+        }
+    }
+
+    public void StopMining() {
+        if (anim != null) {
+            anim.SetBool("isMining", false);
+            anim.speed = 1f; 
+        }
+        if (beliungObject != null) {
+            beliungObject.SetActive(false); 
+        }
+    } // 🔥 KUNCI PERBAIKAN: Kurung kurawal penutup fungsi StopMining() yang tadi hilang sudah ditambahkan di sini!
+
     void Update() {
-        float horizontal = joystick.Horizontal; //
-        float vertical = joystick.Vertical; //
-
-        Vector3 camForward = cameraTransform.forward; //
-        Vector3 camRight = cameraTransform.right; //
-        camForward.y = 0; //
-        camRight.y = 0; //
-        camForward.Normalize(); //
-        camRight.Normalize(); //
-
-        Vector3 direction = (camForward * vertical + camRight * horizontal).normalized; //
-
-        if (controller.isGrounded && velocity.y < 0) { //
-            velocity.y = -2f; //
+        if (anim != null && anim.GetBool("isHarvesting")) 
+        {
+            if (walkAudioSource != null && walkAudioSource.isPlaying) {
+                walkAudioSource.Stop();
+            }
+            return; 
         }
 
-        // --- MANAJEMEN GERAKAN, ANIMASI JALAN CEPAT, DAN AUDIO ---
+        float horizontal = joystick.Horizontal; 
+        float vertical = joystick.Vertical; 
+
+        Vector3 camForward = cameraTransform.forward; 
+        Vector3 camRight = cameraTransform.right; 
+        camForward.y = 0; 
+        camRight.y = 0; 
+        camForward.Normalize(); 
+        camRight.Normalize(); 
+
+        Vector3 direction = (camForward * vertical + camRight * horizontal).normalized; 
+
+        if (controller.isGrounded && velocity.y < 0) { 
+            velocity.y = -2f; 
+        }
+
         if (direction.magnitude >= 0.1f) { 
-            float currentMoveSpeed = speed; //
+            float currentMoveSpeed = speed; 
+            bool lagiMenebang = anim != null ? anim.GetBool("isHarvesting") : false; 
 
-            // Ambil status apakah di Animator sedang memanen/menebang pohon
-            bool lagiMenebang = anim != null ? anim.GetBool("isHarvesting") : false; //
-
-            // Jika layar kanan mendeteksi HOLD, joystick kiri digerakkan, DAN TIDAK sedang menebang pohon
             if (rightTouchInput != null && rightTouchInput.IsRunning && !lagiMenebang)
             {
-                // 🏃‍♂️ KONDISI LARI (JALAN CEPAT)
-                // 1. Set kecepatan gerak fisik karakter di map menjadi 10 (Multiplier 2x dari speed = 5)
-                currentMoveSpeed = speed * sprintSpeedMultiplier; //
-                
+                currentMoveSpeed = speed * sprintSpeedMultiplier; 
                 if (anim != null) {
-                    anim.SetBool("isWalking", true);  //
-                    
-                    // ⚡ INI KUNCINYA: Putaran animasi jalan dipercepat 2 kali lipat biar serasi dengan speed 10
+                    anim.SetBool("isWalking", true);  
                     anim.speed = 2f; 
                 }
             }
             else
             {
-                // 🚶‍♂️ KONDISI JALAN NORMAL
-                // 2. Set kecepatan jalan normal (Speed = 5)
                 if (anim != null) {
-                    anim.SetBool("isWalking", true);  //
-                    
-                    // Putaran animasi jalan diset normal kembali (1)
-                    anim.speed = 1f; //
+                    anim.SetBool("isWalking", true);  
+                    anim.speed = 1f; 
                 }
             }
 
-            // Jalankan pergerakan fisik karakter di dunia 3D (bisa bernilai 5 atau 10)
-            controller.Move(direction * currentMoveSpeed * Time.deltaTime); //
-            transform.rotation = Quaternion.LookRotation(direction); //
+            controller.Move(direction * currentMoveSpeed * Time.deltaTime); 
+            transform.rotation = Quaternion.LookRotation(direction); 
             
-            // Putar audio langkah kaki
             if (walkAudioSource != null && !walkAudioSource.isPlaying) { 
-                walkAudioSource.Play(); //
+                walkAudioSource.Play(); 
             }
-            
         } else {
-            // 🧍‍♂️ KONDISI DIAM / IDLE (Joystick Dilepas)
             if (anim != null) {
-                anim.SetBool("isWalking", false); //
-                
-                // Kembalikan ke kecepatan normal untuk animasi diam/idle
-                anim.speed = 1f; //
+                anim.SetBool("isWalking", false); 
+                anim.speed = 1f; 
             }
-            
-            // Hentikan audio jika karakter berhenti total
-            if (walkAudioSource != null && walkAudioSource.isPlaying) { //
-                walkAudioSource.Stop(); //
+            if (walkAudioSource != null && walkAudioSource.isPlaying) { 
+                walkAudioSource.Stop(); 
             }
         }
 
-        velocity.y += gravity * Time.deltaTime; //
-        controller.Move(velocity * Time.deltaTime); //
+        velocity.y += gravity * Time.deltaTime; 
+        controller.Move(velocity * Time.deltaTime); 
     }
 }

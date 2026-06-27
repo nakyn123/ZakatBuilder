@@ -142,6 +142,14 @@ public class ZakatTernakPanel : MonoBehaviour
         if (panelFormKuis != null) panelFormKuis.SetActive(false);
         if (panelReward != null) panelReward.SetActive(false);
         if (panelHasilKuis != null) panelHasilKuis.SetActive(false);
+        
+        // 🔥 PERBAIKAN: Begitu kuis ini aktif, kunci & matikan coroutine beranak di latar belakang saat itu juga!
+        if (JurnalManager.instance != null)
+        {
+            JurnalManager.instance.isTernakLockedInJurnal = true;
+            JurnalManager.instance.MatikanSistemBeranak();
+        }
+
         InisialisasiAwalKuis();
     }
 
@@ -167,26 +175,38 @@ public class ZakatTernakPanel : MonoBehaviour
 
     void EksekusiKlikJawaban(Button tombolDitekan, int nomorSoal)
     {
-        if (audioSource != null && correctSound != null) audioSource.PlayOneShot(correctSound);
-        bool sudahPernahDijawab = soalSudahDijawab.Contains(nomorSoal);
+        // 1. KUNCI: Jika soal ini sudah pernah dijawab, blokir agar tidak bisa klik opsi lain
+        if (soalSudahDijawab.Contains(nomorSoal)) return;
 
+        // Ambil komponen Parent dari tombol ini (yaitu objek Soal)
         Transform soalParent = tombolDitekan.transform.parent;
-        if (soalParent != null)
+        Button[] tombolPasangan = (soalParent != null) ? soalParent.GetComponentsInChildren<Button>(true) : new Button[0];
+
+        // Cari tahu apakah tombol yang ditekan ini adalah jawaban yang benar
+        bool isCorrect = CekApakahJawabanBenar(nomorSoal, tombolDitekan);
+
+        // 2. EVALUASI JAWABAN LANGSUNG
+        if (isCorrect)
         {
-            Button[] tombolPasangan = soalParent.GetComponentsInChildren<Button>(true);
-            foreach (Button b in tombolPasangan)
-            {
-                if (b != null) b.GetComponent<Image>().color = Color.white;
-            }
+            // JIKA BENAR: Putar sound correct & beri warna Hijau Terang murni
+            if (audioSource != null && correctSound != null) audioSource.PlayOneShot(correctSound);
+            tombolDitekan.GetComponent<Image>().color = Color.green; // Tetap hijau biasa agar dibaca sistem kalkulasi lamamu
+        }
+        else
+        {
+            // JIKA SALAH: Putar sound wrong & beri warna Merah
+            if (audioSource != null && wrongSound != null) audioSource.PlayOneShot(wrongSound);
+            tombolDitekan.GetComponent<Image>().color = Color.red;
+
+            // Beri tanda Hijau Sage pada jawaban yang seharusnya benar (Hanya untuk koreksi visual)
+            TandaiJawabanBenarDiUI(nomorSoal);
         }
 
-        tombolDitekan.GetComponent<Image>().color = Color.green;
-        if (!sudahPernahDijawab)
-        {
-            soalSudahDijawab.Add(nomorSoal);
-            jumlahJawabanDiBabakIni++;
-        }
+        // 3. Simpan status tracking soal[cite: 8]
+        soalSudahDijawab.Add(nomorSoal);
+        jumlahJawabanDiBabakIni++;
 
+        // Atur kemunculan tombol navigasi babak[cite: 8]
         if (currentBabak <= 3)
         {
             if (jumlahJawabanDiBabakIni >= 3)
@@ -197,6 +217,51 @@ public class ZakatTernakPanel : MonoBehaviour
         else if (currentBabak == 4)
         {
             if (btnKalkulasiNilai != null) btnKalkulasiNilai.gameObject.SetActive(true);
+        }
+    }
+
+    // 🔥 FUNGSI PEMBANTU 1: Mengetahui kunci jawaban real-time berdasarkan data KalkulasiNilaiAkhir milikmu[cite: 8]
+    private bool CekApakahJawabanBenar(int nomorSoal, Button tombolDitekan)
+    {
+        switch (nomorSoal)
+        {
+            case 1: return tombolDitekan == answerB1; // Soal 1 = B1 True[cite: 8]
+            case 2: return tombolDitekan == answerB2; // Soal 2 = B2 True[cite: 8]
+            case 3: return tombolDitekan == answerA3; // Soal 3 = A3 True[cite: 8]
+            case 4: return tombolDitekan == answerB4; // Soal 4 = B4 True[cite: 8]
+            case 5: return tombolDitekan == answerB5; // Soal 5 = B5 True[cite: 8]
+            case 6: return tombolDitekan == answerB6; // Soal 6 = B6 True[cite: 8]
+            case 7: return tombolDitekan == answerB7; // Soal 7 = B7 True[cite: 8]
+            case 8: return tombolDitekan == answerC8; // Soal 8 = C8 True[cite: 8]
+            case 9: return tombolDitekan == answerB9; // Soal 9 = B9 True[cite: 8]
+            case 10: return tombolDitekan == answerC10; // Soal 10 = C10 True[cite: 8]
+            default: return false;
+        }
+    }
+
+    // 🔥 FUNGSI PEMBANTU 2: Mewarnai jawaban yang benar dengan warna Hijau Sage saat pemain salah
+    private void TandaiJawabanBenarDiUI(int nomorSoal)
+    {
+        Button tombolBenar = null;
+        Color hijauSage = new Color(0.49f, 0.97f, 0.49f, 1f); // Menyesuaikan hex code hijau sage[cite: 7]
+
+        switch (nomorSoal)
+        {
+            case 1: tombolBenar = answerB1; break;
+            case 2: tombolBenar = answerB2; break;
+            case 3: tombolBenar = answerA3; break;
+            case 4: tombolBenar = answerB4; break;
+            case 5: tombolBenar = answerB5; break;
+            case 6: tombolBenar = answerB6; break;
+            case 7: tombolBenar = answerB7; break;
+            case 8: tombolBenar = answerC8; break;
+            case 9: tombolBenar = answerB9; break;
+            case 10: tombolBenar = answerC10; break;
+        }
+
+        if (tombolBenar != null)
+        {
+            tombolBenar.GetComponent<Image>().color = hijauSage;
         }
     }
 
@@ -376,7 +441,8 @@ public class ZakatTernakPanel : MonoBehaviour
     }
 
     public void ValidateZakatTernak()
-    {   if (audioSource != null && clickSound != null) audioSource.PlayOneShot(clickSound);
+    {   
+        if (audioSource != null && clickSound != null) audioSource.PlayOneShot(clickSound);
         if (JurnalManager.instance == null) return;
 
         int sapiSekarang = JurnalManager.instance.GetJumlahSapiRealTime();
@@ -384,53 +450,56 @@ public class ZakatTernakPanel : MonoBehaviour
 
         bool sapiValid = false;
         bool kambingValid = false;
+
         if (isSapiWajib && dropdownSapi != null)
         {
             int idx = dropdownSapi.value;
 
-            if (sapiSekarang >= 30 && sapiSekarang < 40)        sapiValid = (idx == 1);
-            else if (sapiSekarang >= 40 && sapiSekarang < 60)   sapiValid = (idx == 2);
-            else if (sapiSekarang >= 60 && sapiSekarang < 70)   sapiValid = (idx == 3);
-            else if (sapiSekarang >= 70 && sapiSekarang < 80)   sapiValid = (idx == 4);
-            else if (sapiSekarang >= 80 && sapiSekarang < 90)   sapiValid = (idx == 5);
-            else if (sapiSekarang >= 90 && sapiSekarang < 100)  sapiValid = (idx == 6);
-            else if (sapiSekarang >= 100 && sapiSekarang < 110) sapiValid = (idx == 8);
-            else if (sapiSekarang >= 110 && sapiSekarang < 120) sapiValid = (idx == 7);
-            else if (sapiSekarang >= 120 && sapiSekarang < 130) sapiValid = (idx == 10 || idx == 11);
-            else if (sapiSekarang >= 130 && sapiSekarang < 140) sapiValid = (idx == 10);
-            else if (sapiSekarang >= 140 && sapiSekarang < 150) sapiValid = (idx == 11 || idx == 12);
-            else if (sapiSekarang >= 150 && sapiSekarang < 160) sapiValid = (idx == 13);
-            else if (sapiSekarang >= 160 && sapiSekarang < 170) sapiValid = (idx == 14);
-            else if (sapiSekarang >= 170 && sapiSekarang < 180) sapiValid = (idx == 15);
-            else if (sapiSekarang >= 180 && sapiSekarang < 200) sapiValid = (idx == 16);
-            else if (sapiSekarang >= 200)                       sapiValid = (idx == 17);
+            // Pemetaan Logika Berdasarkan Daftar Dropdown Baru (image_082782.png):
+            if (sapiSekarang >= 30 && sapiSekarang < 40)        sapiValid = (idx == 1);  // 1 tabii (> 30)
+            else if (sapiSekarang >= 40 && sapiSekarang < 60)   sapiValid = (idx == 2);  // 1 musinnah (> 40-59)
+            else if (sapiSekarang >= 60 && sapiSekarang < 70)   sapiValid = (idx == 3);  // 2 tabii (> 60)
+            else if (sapiSekarang >= 70 && sapiSekarang < 80)   sapiValid = (idx == 4);  // 1 tabi dan 1 musinnah (> 70)
+            else if (sapiSekarang >= 80 && sapiSekarang < 90)   sapiValid = (idx == 5);  // 2 musinnah (> 80)
+            else if (sapiSekarang >= 90 && sapiSekarang < 100)  sapiValid = (idx == 6);  // 3 tabii (> 90)
+            else if (sapiSekarang >= 100 && sapiSekarang < 110) sapiValid = (idx == 7);  // 1 musinnah 2 tabii (> 100)
+            else if (sapiSekarang >= 110 && sapiSekarang < 120) sapiValid = (idx == 8);  // 2 musinnah 1 tabii (> 110)
+            
+            // Rentang 120-129 Ekor: Bisa 3 musinnah (idx 9) ATAU 4 tabii (idx 10)
+            else if (sapiSekarang >= 120 && sapiSekarang < 130) sapiValid = (idx == 9 || idx == 10); 
+            
+            else if (sapiSekarang >= 130 && sapiSekarang < 140) sapiValid = (idx == 11); // 3 tabii 1 musinnah (> 130)
+            else if (sapiSekarang >= 140 && sapiSekarang < 150) sapiValid = (idx == 12); // 2 tabii 2 musinnah (> 140)
+            
+            // Rentang 150-159 Ekor: Bisa 3 musinnah 1 tabii (idx 13) ATAU 5 tabii (idx 14)
+            else if (sapiSekarang >= 150 && sapiSekarang < 160) sapiValid = (idx == 13 || idx == 14);
+            
+            // Rentang 160-169 Ekor: Bisa 4 musinnah (idx 15) ATAU 4 tabii 1 musinnah (idx 16)
+            else if (sapiSekarang >= 160 && sapiSekarang < 170) sapiValid = (idx == 15 || idx == 16);
+            
+            else if (sapiSekarang >= 170 && sapiSekarang < 180) sapiValid = (idx == 17); // 2 musinnah 3 tabii (> 170)
+            else if (sapiSekarang >= 180 && sapiSekarang < 190) sapiValid = (idx == 18); // 6 tabii (> 180)
+            
+            // Rentang 190-199 Ekor: Bisa 4 musinnah 1 tabii (idx 19) ATAU 5 tabii 1 musinnah (idx 20)
+            else if (sapiSekarang >= 190 && sapiSekarang < 200) sapiValid = (idx == 19 || idx == 20);
+            
+            // Rentang >= 200 Ekor: Bisa 4 tabii 2 musinnah (idx 21) ATAU 5 musinnah (idx 22)
+            else if (sapiSekarang >= 200)                       sapiValid = (idx == 21 || idx == 22);
         }
         else if (!isSapiWajib)
         {
             sapiValid = true;
         }
 
+        // --- LOGIKA VALIDASI KAMBING (Tetap Settle) ---
         if (isKambingWajib && dropdownKambing != null)
         {
             int idxKambing = dropdownKambing.value;
+            if (kambingSekarang > 1000) kambingSekarang = 1000;
 
-            if (kambingSekarang > 1000)
-            {
-                kambingSekarang = 1000;
-            }
-
-            if (kambingSekarang >= 40 && kambingSekarang <= 120)
-            {
-                kambingValid = (idxKambing == 1);
-            }
-            else if (kambingSekarang >= 121 && kambingSekarang <= 200)
-            {
-                kambingValid = (idxKambing == 2);
-            }
-            else if (kambingSekarang >= 201 && kambingSekarang <= 300)
-            {
-                kambingValid = (idxKambing == 3);
-            }
+            if (kambingSekarang >= 40 && kambingSekarang <= 120)       kambingValid = (idxKambing == 1);
+            else if (kambingSekarang >= 121 && kambingSekarang <= 200) kambingValid = (idxKambing == 2);
+            else if (kambingSekarang >= 201 && kambingSekarang <= 300) kambingValid = (idxKambing == 3);
             else if (kambingSekarang > 300 && kambingSekarang <= 1000)
             {
                 int hitunganZakat = 3 + ((kambingSekarang - 300) / 100);
@@ -442,6 +511,7 @@ public class ZakatTernakPanel : MonoBehaviour
             kambingValid = true;
         }
 
+        // --- BLOK EKSEKUSI REWARD & PENGURANGAN ASET ---
         if (sapiValid && kambingValid)
         {
             if (audioSource && correctSound) audioSource.PlayOneShot(correctSound);
@@ -487,7 +557,7 @@ public class ZakatTernakPanel : MonoBehaviour
     {   
         if (audioSource != null) { audioSource.Stop(); audioSource.loop = false; }
         
-        // 🔥 MATIKAN PERMANEN karena sudah berhasil menjawab form kuis dengan benar
+        // MATIKAN PERMANEN karena sudah berhasil menjawab form kuis dengan benar
         if (JurnalManager.instance != null) 
         {
             JurnalManager.instance.MatikanSistemBeranak();
@@ -495,6 +565,7 @@ public class ZakatTernakPanel : MonoBehaviour
         
         if (MoneyManager.instance != null) MoneyManager.instance.AddMoney(100000);
 
+        // 1. Set status peternakan selesai terlebih dahulu agar dibaca oleh Level3Manager
         if (ZakatPanelManager.instance != null)
         {
             ZakatPanelManager.instance.isPeternakanCompleted = true;
@@ -503,11 +574,19 @@ public class ZakatTernakPanel : MonoBehaviour
             ZakatPanelManager.instance.CloseZakatPanel();
         }
 
+        // 🔥 2. AMANKAN & KOSONGKAN PANEL DARI LEVEL 3 MANAGER AGAR TIDAK MUNCUL LAGI
+        if (Level3Manager.instance != null)
+        {
+            if (Level3Manager.instance.panelBabLvl3 != null) Level3Manager.instance.panelBabLvl3.SetActive(false);
+            if (Level3Manager.instance.conversionPanel != null) Level3Manager.instance.conversionPanel.SetActive(false);
+        }
+
         if (panelReward != null) panelReward.SetActive(false);
         
+        // 3. Panggil Ending Manager untuk memulai sequence ending game
         if (EndingManager.instance != null)
         {
-            EndingManager.instance.MulaiSequenceEnding();
+            EndingManager.instance.MulaiSequenceEnding(); //[cite: 3, 4]
         }
 
         if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(gameObject);

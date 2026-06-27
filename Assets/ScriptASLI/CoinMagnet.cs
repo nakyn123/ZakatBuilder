@@ -16,14 +16,15 @@ public class CoinMagnet : MonoBehaviour {
         transform.position = Vector3.MoveTowards(transform.position, targetPos, speed * Time.deltaTime);
 
         if (Vector3.Distance(transform.position, targetPos) < 0.2f) {
-            // PERBAIKAN: Gunakan woodType, bukan angka 0 manual
             if (InventoryManager.instance != null) {
                 InventoryManager.instance.AddWood(1, woodType);
             }
 
             PlayerMovement playerScript = target.GetComponent<PlayerMovement>();
             if (playerScript != null) {
+                // 🔥 SINKRONISASI AKHIR: Matikan animasi apa pun yang sedang aktif saat koin masuk ke tubuh
                 playerScript.StopHarvesting();
+                playerScript.StopMining(); // Matikan beliung dan tegakkan badan jika sedang menambang!
             }
             Destroy(gameObject);
         }

@@ -167,32 +167,38 @@ public class ZakatEmasPerakPanel : MonoBehaviour
 
     void EksekusiKlikJawaban(Button tombolDitekan, int nomorSoal)
     {
-        // Gunakan sound 1 tunggal untuk klik apa pun sesuai keinginanmu
-        if (audioSource != null && correctSound != null) audioSource.PlayOneShot(correctSound);
+        // 1. KUNCI: Jika soal ini sudah pernah dijawab, blokir agar tidak bisa klik opsi lain
+        if (soalSudahDijawab.Contains(nomorSoal)) return;
 
-        bool sudahPernahDijawab = soalSudahDijawab.Contains(nomorSoal);
-
-        // Reset warna tombol pasangannya dalam satu soal ke putih semula
+        // Ambil komponen Parent dari tombol ini (yaitu objek Soal)
         Transform soalParent = tombolDitekan.transform.parent;
-        if (soalParent != null)
+        Button[] tombolPasangan = (soalParent != null) ? soalParent.GetComponentsInChildren<Button>(true) : new Button[0];
+
+        // Cari tahu apakah tombol yang ditekan ini adalah jawaban yang benar
+        bool isCorrect = CekApakahJawabanBenar(nomorSoal, tombolDitekan);
+
+        // 2. EVALUASI JAWABAN LANGSUNG
+        if (isCorrect)
         {
-            Button[] tombolPasangan = soalParent.GetComponentsInChildren<Button>(true);
-            foreach (Button b in tombolPasangan)
-            {
-                if (b != null) b.GetComponent<Image>().color = Color.white;
-            }
+            // JIKA BENAR: Putar sound correct & beri warna Hijau Terang murni
+            if (audioSource != null && correctSound != null) audioSource.PlayOneShot(correctSound);
+            tombolDitekan.GetComponent<Image>().color = Color.green; // Tetap hijau biasa agar dibaca sistem kalkulasi lamamu
+        }
+        else
+        {
+            // JIKA SALAH: Putar sound wrong & beri warna Merah
+            if (audioSource != null && wrongSound != null) audioSource.PlayOneShot(wrongSound);
+            tombolDitekan.GetComponent<Image>().color = Color.red;
+
+            // Beri tanda Hijau Sage pada jawaban yang seharusnya benar (Hanya untuk koreksi visual)
+            TandaiJawabanBenarDiUI(nomorSoal);
         }
 
-        // Ubah warna tombol aktif terpilih jadi hijau settle
-        tombolDitekan.GetComponent<Image>().color = Color.green;
+        // 3. Simpan status tracking soal[cite: 6]
+        soalSudahDijawab.Add(nomorSoal);
+        jumlahJawabanDiBabakIni++;
 
-        if (!sudahPernahDijawab)
-        {
-            soalSudahDijawab.Add(nomorSoal);
-            jumlahJawabanDiBabakIni++;
-        }
-
-        // Cek kondisi kemunculan tombol navigasi babak
+        // Atur kemunculan tombol navigasi babak[cite: 6]
         if (currentBabak <= 3)
         {
             if (jumlahJawabanDiBabakIni >= 3)
@@ -203,6 +209,51 @@ public class ZakatEmasPerakPanel : MonoBehaviour
         else if (currentBabak == 4)
         {
             if (btnKalkulasiNilai != null) btnKalkulasiNilai.gameObject.SetActive(true);
+        }
+    }
+
+    // 🔥 FUNGSI PEMBANTU 1: Mengetahui kunci jawaban real-time berdasarkan data KalkulasiNilaiAkhir milikmu[cite: 6]
+    private bool CekApakahJawabanBenar(int nomorSoal, Button tombolDitekan)
+    {
+        switch (nomorSoal)
+        {
+            case 1: return tombolDitekan == answerB1; // Soal 1 = B1 True[cite: 6]
+            case 2: return tombolDitekan == answerA2; // Soal 2 = A2 True[cite: 6]
+            case 3: return tombolDitekan == answerC3; // Soal 3 = C3 True[cite: 6]
+            case 4: return tombolDitekan == answerB4; // Soal 4 = B4 True[cite: 6]
+            case 5: return tombolDitekan == answerB5; // Soal 5 = B5 True[cite: 6]
+            case 6: return tombolDitekan == answerA6; // Soal 6 = A6 True[cite: 6]
+            case 7: return tombolDitekan == answerA7; // Soal 7 = A7 True[cite: 6]
+            case 8: return tombolDitekan == answerA8; // Soal 8 = A8 True[cite: 6]
+            case 9: return tombolDitekan == answerA9; // Soal 9 = A9 True[cite: 6]
+            case 10: return tombolDitekan == answerA10; // Soal 10 = A10 True[cite: 6]
+            default: return false;
+        }
+    }
+
+    // 🔥 FUNGSI PEMBANTU 2: Mewarnai jawaban yang benar dengan warna Hijau Sage saat pemain salah
+    private void TandaiJawabanBenarDiUI(int nomorSoal)
+    {
+        Button tombolBenar = null;
+        Color hijauSage = new Color(0.49f, 0.97f, 0.49f, 1f); // Menyesuaikan hex code hijau sage[cite: 7]
+
+        switch (nomorSoal)
+        {
+            case 1: tombolBenar = answerB1; break;
+            case 2: tombolBenar = answerA2; break;
+            case 3: tombolBenar = answerC3; break;
+            case 4: tombolBenar = answerB4; break;
+            case 5: tombolBenar = answerB5; break;
+            case 6: tombolBenar = answerA6; break;
+            case 7: tombolBenar = answerA7; break;
+            case 8: tombolBenar = answerA8; break;
+            case 9: tombolBenar = answerA9; break;
+            case 10: tombolBenar = answerA10; break;
+        }
+
+        if (tombolBenar != null)
+        {
+            tombolBenar.GetComponent<Image>().color = hijauSage;
         }
     }
 

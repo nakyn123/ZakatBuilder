@@ -15,72 +15,87 @@ public class CoinLogamItem : MonoBehaviour
 
     [Header("Effect Pickup")]
     public GameObject floatingTextPrefab; 
-    // 🔥 TAMBAHKAN VARIABEL UTK AUDIO CLIP DI BAWAH INI
     public AudioClip coinSoundEffect; 
 
     private Vector3 startPosition;
+    private bool isTargetedByMagnet = false;
+    private bool sudahDiambil = false; // Pengaman agar fungsi tidak terduplikasi dalam satu frame
 
     void Start()
     {
         startPosition = transform.position;
+        if (GetComponent<MiningCoinMagnet>() != null) {
+            isTargetedByMagnet = true;
+        }
     }
 
     void Update()
     {
         transform.Rotate(Vector3.up * rotateSpeed * Time.deltaTime);
-        float newY = startPosition.y + (Mathf.Sin(Time.time * floatSpeed) * floatHeight);
-        transform.position = new Vector3(transform.position.x, newY, transform.position.z);
+        
+        if (!isTargetedByMagnet) {
+            float newY = startPosition.y + (Mathf.Sin(Time.time * floatSpeed) * floatHeight);
+            transform.position = new Vector3(transform.position.x, newY, transform.position.z);
+        }
     }
 
-    private void OnTriggerEnter(Collider other)
+    // Fungsi utama penambahan harta, sfx, dan teks
+    public void AmbilKoinLogam(Transform playerTransform)
     {
-        if (other.CompareTag("Player"))
+        if (sudahDiambil) return;
+        sudahDiambil = true;
+
+        if (coinSoundEffect != null)
         {
-            // 1. Jalankan Efek Suara di posisi koin sebelum dihancurkan
-            if (coinSoundEffect != null)
+            AudioSource.PlayClipAtPoint(coinSoundEffect, playerTransform.position, 1f);
+        }
+
+        if (MoneyManager.instance != null)
+        {
+            if (jenisLogam == JenisLogam.Emas) MoneyManager.instance.totalEmas += jumlahGram;
+            else if (jenisLogam == JenisLogam.Perak) MoneyManager.instance.totalPerak += jumlahGram;
+
+            MoneyManager.instance.UpdateEmasPerakUI();
+        }
+
+        if (Level2Manager.instance != null)
+        {
+            if (jenisLogam == JenisLogam.Emas && Level2Manager.instance.txtEmasUtama != null)
             {
-                // Angka 1f di ujung adalah volume suara (0f sampai 1f)
-                AudioSource.PlayClipAtPoint(coinSoundEffect, transform.position, 1f);
+                Level2Manager.instance.txtEmasUtama.text = MoneyManager.instance.totalEmas + " gr";
             }
-
-            // 2. Tambah Nilai ke MoneyManager
-            if (MoneyManager.instance != null)
+            else if (jenisLogam == JenisLogam.Perak && Level2Manager.instance.txtPerakUtama != null)
             {
-                if (jenisLogam == JenisLogam.Emas) MoneyManager.instance.totalEmas += jumlahGram;
-                else if (jenisLogam == JenisLogam.Perak) MoneyManager.instance.totalPerak += jumlahGram;
-
-                MoneyManager.instance.UpdateEmasPerakUI();
+                Level2Manager.instance.txtPerakUtama.text = MoneyManager.instance.totalPerak + " gr";
             }
+        }
 
-            // 3. Sinkronisasi Teks ke Level2Manager
-            if (Level2Manager.instance != null)
-            {
-                if (jenisLogam == JenisLogam.Emas && Level2Manager.instance.txtEmasUtama != null)
-                {
-                    Level2Manager.instance.txtEmasUtama.text = MoneyManager.instance.totalEmas + " gr";
-                }
-                else if (jenisLogam == JenisLogam.Perak && Level2Manager.instance.txtPerakUtama != null)
-                {
-                    Level2Manager.instance.txtPerakUtama.text = MoneyManager.instance.totalPerak + " gr";
-                }
+        if (JurnalManager.instance != null)
+        {
+            JurnalManager.instance.CheckEmasPerakNisab();
+        }
+
+        if (floatingTextPrefab != null)
+        {
+            Vector3 spawnPosition = playerTransform.position + new Vector3(0f, 1.7f, 0f); 
+            GameObject textObj = Instantiate(floatingTextPrefab, spawnPosition, Quaternion.identity);
+            textObj.GetComponent<FloatingText>().SetText("+" + jumlahGram + " gr");
+        }
+
+        Destroy(gameObject);
+    }
+
+    // 🔥 PENGAMAN CADANGAN: Jika koin membentur fisik player di jalan, langsung serap seketika!
+    private void OnTriggerEnter(Collider other) 
+    {
+        if (sudahDiambil) return;
+        if (other.CompareTag("Player")) 
+        {
+            PlayerMovement playerScript = other.GetComponent<PlayerMovement>();
+            if (playerScript != null) {
+                playerScript.StopMining(); 
             }
-
-            if (JurnalManager.instance != null)
-            {
-                JurnalManager.instance.CheckEmasPerakNisab();
-            }
-
-            // 4. Munculkan Popup Floating Text
-            if (floatingTextPrefab != null)
-            {
-                Vector3 spawnPosition = transform.position; 
-                spawnPosition.y += 0.8f; 
-                GameObject textObj = Instantiate(floatingTextPrefab, spawnPosition, Quaternion.identity);
-                textObj.GetComponent<FloatingText>().SetText("+" + jumlahGram + " gr");
-            }
-
-            // 5. Hancurkan objek koin
-            Destroy(gameObject); //[cite: 2]
+            AmbilKoinLogam(other.transform);
         }
     }
 }

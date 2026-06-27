@@ -81,12 +81,18 @@ public class MainMenuManager : MonoBehaviour
     }
 
     // --- LOGIKA TOMBOL MULAI ULANG (RESTART) ---
+    // --- LOGIKA TOMBOL MULAI ULANG (RESTART) ---
     public void RestartGameData()
     {
-        PlayClickSound(); 
+        PlayClickSound(); //
 
-        // Jalankan proses hapus data dan animasi loading via Coroutine
-        StartCoroutine(ProsesLoadingResetHistory());
+        // 🔥 1. Bersihkan total seluruh PlayerPrefs di sini sebelum coroutine dimulai
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
+        Debug.Log("<color=yellow>[Main Menu]</color> Seluruh PlayerPrefs telah dibersihkan murni!");
+
+        // 🔥 2. Panggil Coroutine asli milikmu (Namanya ProsesLoadingResetHistory)
+        StartCoroutine(ProsesLoadingResetHistory()); //
     }
 
     private IEnumerator ProsesLoadingResetHistory()

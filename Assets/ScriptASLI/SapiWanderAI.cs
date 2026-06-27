@@ -28,10 +28,10 @@ public class SapiWanderAI : MonoBehaviour
     {
         anim = GetComponent<Animator>();
         
-        if (anim != null)
-        {
-            anim.SetFloat("OffsetLompat", Random.Range(0f, 1f));
-        }
+        // if (anim != null)
+        // {
+        //     anim.SetFloat("OffsetLompat", Random.Range(0f, 1f));
+        // }
 
         if (playerTransform == null)
         {

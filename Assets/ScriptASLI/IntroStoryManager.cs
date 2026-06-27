@@ -53,48 +53,59 @@ public class IntroStoryManager : MonoBehaviour
     private StoryState currentState = StoryState.Intro10_16;
 
     void Awake()
-    {
-        instance = this;
+{
+    instance = this;
 
-        // 🔥 KHUSUS DEVELOPER: Otomatis hapus data intro setiap kali kamu klik tombol PLAY di Unity Editor
-        #if UNITY_EDITOR
-        PlayerPrefs.DeleteKey("IntroSelesai");
-        PlayerPrefs.DeleteKey("Panel17Selesai");
-        PlayerPrefs.DeleteKey("Panel18Selesai");
-        PlayerPrefs.Save();
-        #endif
-    }
+    // #if UNITY_EDITOR
+    // // 🔥 TAMBAHAN: Paksa reset flag restart ke 1 agar TaskManager membaca dari awal saat play di editor
+    // PlayerPrefs.SetInt("IsRestarted", 1);
+    // PlayerPrefs.SetInt("IntroSelesai", 0);
+    // PlayerPrefs.DeleteKey("Panel17Selesai");
+    // PlayerPrefs.DeleteKey("Panel18Selesai");
+    // PlayerPrefs.Save();
+    // #endif
+}
 
     void Start()
     {
         if (btnNextGlobal != null) btnNextGlobal.onClick.AddListener(OnBtnNextClicked);
         if (btnXPanelLevel1 != null) btnXPanelLevel1.onClick.AddListener(TutupPanelLevel1);
 
+        // 🔥 FIX UTAMA 1: Paksa UIManager mereset hitungannya ke 0 murni agar HUD tidak terkunci mati
+        if (UIManager.instance != null)
+        {
+            typeof(UIManager).GetField("openedPanelsCount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(UIManager.instance, 0);
+        }
+
+        // 2. Matikan semua panel awal cerita secara bersih di awal frame
         MatikanSemuaPanelAwal();
 
+        // 🔥 FIX UTAMA 2: Cek apakah game dimulai dari awal murni (Fresh Player atau Hasil Klik Restart)
         if (PlayerPrefs.GetInt("IntroSelesai", 0) == 0)
         {
             currentState = StoryState.Intro10_16;
-            ToggleHUD(false); 
+            currentPanelIndex = 0; // Mulai wajib dari Panel Index ke-0 (Panel 10)
+
+            // Matikan HUD utama agar fokus menikmati sekuens intro
+            ToggleHUD(false);
             
-            // 🔥 JALANKAN EFEK MIST JIKA BARU PERTAMA KALI MAIN
             if (imgMistPutih != null)
             {
                 imgMistPutih.gameObject.SetActive(true);
-                // Set warna putih pekat di awal (Alpha = 1)
-                imgMistPutih.color = new Color(1f, 1f, 1f, 1f); 
+                imgMistPutih.color = new Color(1f, 1f, 1f, 1f);
             }
             
+            // Panggil fungsi untuk mulai menampilkan ketikan cerita panel 10 murni
             MulaiIntroCerita();
         }
         else
         {
-            // Jika meload save game, mist putih dimatikan langsung
+            // Jika meload save game biasa, kabut dimatikan dan HUD dinyalakan langsung
             if (imgMistPutih != null) imgMistPutih.gameObject.SetActive(false);
             
-            btnNextGlobal.gameObject.SetActive(false);
+            if(btnNextGlobal != null) btnNextGlobal.gameObject.SetActive(false);
             if(panelLevel1 != null) panelLevel1.SetActive(false);
-            ToggleHUD(true); 
+            ToggleHUD(true);
         }
     }
 
@@ -301,7 +312,15 @@ public class IntroStoryManager : MonoBehaviour
         if (introPanels[introPanels.Length - 1] != null) introPanels[introPanels.Length - 1].SetActive(false);
         if (btnNextGlobal != null) btnNextGlobal.gameObject.SetActive(false);
         
+        // Paksa aktifkan HUD utama game
         ToggleHUD(true); 
+
+        // Amankan UIManager agar tidak mematikan HUD secara sepihak
+        if (UIManager.instance != null)
+        {
+            // Jika gameplay baru mulai murni, pastikan status panel terbuka di-reset ke 0
+            // Kamu bisa menambahkan variabel helper atau fungsi ResetCounter() di UIManager jika diperlukan
+        }
 
         if (TaskManager.instance != null && TaskManager.instance.ikonNotifikasi != null)
         {

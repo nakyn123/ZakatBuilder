@@ -434,12 +434,10 @@ public class TokoManager : MonoBehaviour
 
                 jumlahSapiDibeli++;
 
-                // 🔄 BERUBAH DI SINI: Otomatis ambil Image dari Button saat Sold Out
                 if (jumlahSapiDibeli >= 5)
                 {
                     if (btnBeliSapi != null)
                     {
-                        // Tetap true agar warna sprite tidak transparan/mengikuti disabled color
                         btnBeliSapi.interactable = true;
                         Image imgBtn = btnBeliSapi.GetComponent<Image>();
                         if (imgBtn != null && spriteSapiSoldOut != null) imgBtn.sprite = spriteSapiSoldOut;
@@ -447,6 +445,8 @@ public class TokoManager : MonoBehaviour
                 }
 
                 JalankanEfekAudioDanKoin(hargaSapi);
+                
+                // 🔥 PINDAH KE SINI: Hanya terhitung jika uangnya cukup
                 if (TaskManager.instance != null) TaskManager.instance.NotifyHewanDibeli();
             }
             else
@@ -454,11 +454,9 @@ public class TokoManager : MonoBehaviour
                 BukaPanelUangKurang();
             }
         }
+        // ❌ Hapus NotifyHewanDibeli() yang ada di sini sebelumnya
     }
 
-    // =================================================================
-    // 🔥 FUNGSI BELI KAMBING (LANGSUNG AMBIL IMAGE DARI COMPONENT BUTTON)
-    // =================================================================
     public void BeliKambingSpesifik(int hargaKambing)
     {
         if (jumlahKambingDibeli >= 5) return;
@@ -476,7 +474,6 @@ public class TokoManager : MonoBehaviour
 
                 jumlahKambingDibeli++;
 
-                // 🔄 BERUBAH DI SINI: Otomatis ambil Image dari Button saat Sold Out
                 if (jumlahKambingDibeli >= 5)
                 {
                     if (btnBeliKambing != null)
@@ -488,6 +485,8 @@ public class TokoManager : MonoBehaviour
                 }
 
                 JalankanEfekAudioDanKoin(hargaKambing);
+                
+                // 🔥 PINDAH KE SINI: Hanya terhitung jika uangnya cukup
                 if (TaskManager.instance != null) TaskManager.instance.NotifyHewanDibeli();
             }
             else
@@ -495,6 +494,7 @@ public class TokoManager : MonoBehaviour
                 BukaPanelUangKurang();
             }
         }
+        // ❌ Hapus NotifyHewanDibeli() yang ada di sini sebelumnya
     }
 
     private void JalankanEfekAudioDanKoin(int hargaYangDibeli)
@@ -589,13 +589,16 @@ public class TokoManager : MonoBehaviour
                 if (InventoryManager.instance != null) {
                     InventoryManager.instance.AddPakanDariToko();
                 }
+
+                // 🔥 PINDAH KE SINI: Task hanya update kalau pakan benar-benar terbeli
+                if (TaskManager.instance != null) TaskManager.instance.NotifyBeliPakan();
             }
             else
             {
                 BukaPanelUangKurang();
             }
         }
-        if (TaskManager.instance != null) TaskManager.instance.NotifyBeliPakan();
+        // ❌ Hapus NotifyBeliPakan() yang ada di sini sebelumnya
     }
 
     // 🔄 PERBARUI FUNGSI INI DI TOKOMANAGER.CS

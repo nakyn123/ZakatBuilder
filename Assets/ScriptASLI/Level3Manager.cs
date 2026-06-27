@@ -59,9 +59,11 @@ public class Level3Manager : MonoBehaviour
         }
     }
 
+   // ... (Kode bagian atas tetap sama) ...
+
    public void TutupRewardDanMasukLevel3()
     {
-        // 🔥 TAMBAHAN: Tutup langsung Carousel Zakat Umum agar background-nya kembali menjadi gameplay murni
+        // Tutup langsung Carousel Zakat Umum agar background gameplay murni
         if (ZakatPanelManager.instance != null)
         {
             ZakatPanelManager.instance.CloseZakatPanel();
@@ -69,7 +71,17 @@ public class Level3Manager : MonoBehaviour
 
         if (panelRewardEmasPerak != null) panelRewardEmasPerak.SetActive(false);
 
-        // LOGIKA DENGAN BUTTON CLOSE MANUAl (X)
+        // 🔥 TAMBAHKAN PENGECEKAN INI: Jika peternakan sudah selesai, ini adalah ending!
+        // Jangan munculkan panel bab level 3 atau konversi lagi, langsung kosongkan.
+        if (ZakatPanelManager.instance != null && ZakatPanelManager.instance.isPeternakanCompleted)
+        {
+            if (panelBabLvl3 != null) panelBabLvl3.SetActive(false);
+            if (conversionPanel != null) conversionPanel.SetActive(false);
+            Debug.Log("<color=cyan>[Level 3 Manager]</color> Zakat Ternak Selesai. Panel dikosongkan, bersiap untuk Ending...");
+            return; 
+        }
+
+        // LOGIKA DENGAN BUTTON CLOSE MANUAL (X) UNTUK TRANSISI AWAL MASUK LEVEL 3
         if (panelBabLvl3 != null)
         {
             panelBabLvl3.SetActive(true);

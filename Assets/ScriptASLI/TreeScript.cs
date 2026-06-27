@@ -33,6 +33,8 @@ public class TreeSimple : MonoBehaviour {
     private bool isDestroyed = false; 
     private Dictionary<GameObject, Vector3> originalScales = new Dictionary<GameObject, Vector3>();
     private Dictionary<GameObject, Quaternion> originalRotations = new Dictionary<GameObject, Quaternion>();
+    private Vector3 posisiAwalPlayer;
+    private Quaternion rotasiAwalPlayer;
 
     void Start() {
         if (globalChopGroup != null) {
@@ -64,6 +66,12 @@ public class TreeSimple : MonoBehaviour {
 
     void OnTriggerExit(Collider other) {
         if (other.CompareTag("Player")) {
+            // 🔥 Hentikan animasi harvest secara paksa jika player kabur sebelum pohon habis
+            PlayerMovement moveScript = other.GetComponent<PlayerMovement>();
+            if (moveScript != null) {
+                moveScript.StopHarvesting();
+            }
+
             if (globalChopGroup != null) {
                 globalButton.onClick.RemoveAllListeners();
                 globalChopGroup.SetActive(false); 
@@ -82,10 +90,18 @@ public class TreeSimple : MonoBehaviour {
         if (player != null) {
             PlayerMovement moveScript = player.GetComponent<PlayerMovement>();
             if (moveScript != null) {
-                moveScript.StartHarvesting(); 
-                Vector3 targetPos = transform.position;
-                targetPos.y = player.transform.position.y;
-                player.transform.LookAt(targetPos);
+                // 🔥 KUNCI UTAMA: Hanya jalankan animasi & LookAt jika ini adalah PUKULAN PERTAMA (hitCount == 0)
+                if (hitCount == 0) {
+                    moveScript.StartHarvesting(); 
+                    // Vector3 targetPos = transform.position;
+                    // targetPos.y = player.transform.position.y;
+                    
+                    // // 1. Hadapkan ke pohon (akan terbalik ke selatan karena pivot model)
+                    // player.transform.LookAt(targetPos);
+                    
+                    // // 2. 🔥 PERBAIKAN: Putar balik badan player 180 derajat agar menghadap ke pohon dengan benar!
+                    // player.transform.Rotate(0f, 180f, 0f);
+                }
             }
         }
         
@@ -109,6 +125,7 @@ public class TreeSimple : MonoBehaviour {
             Invoke("UpdateLogo", 0.1f);
             Invoke("UpdateVisualPohonTanpaSkip", 0.1f); 
         } else {
+            
             Tumbang();
         }
     }
@@ -193,4 +210,5 @@ public class TreeSimple : MonoBehaviour {
             magnet.woodType = (int)jenisPohon;
         }
     }
+    
 }

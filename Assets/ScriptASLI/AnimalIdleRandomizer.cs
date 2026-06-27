@@ -11,22 +11,36 @@ public class AnimalIdleRandomizer : MonoBehaviour
     {
         Animator anim = GetComponent<Animator>();
 
-        if (anim != null)
+        // 🔥 SINKRONISASI AMAN: Pastikan Animator ada DAN memiliki Animator Controller aktif
+        if (anim != null && anim.runtimeAnimatorController != null)
         {
-            // 1. Mengacak parameter float bawaan (seperti OffsetLompat kamu)
-            if (!string.IsNullOrEmpty(offsetParameterName))
+            // 1. Mengacak parameter float bawaan (Cek juga apakah parameternya valid di Animator)
+            if (!string.IsNullOrEmpty(offsetParameterName) && HasParameter(anim, offsetParameterName))
             {
                 anim.SetFloat(offsetParameterName, Random.Range(0f, 1f));
             }
 
-            // 2. SOLUSI UTAMA: Paksa Animator melompat ke frame acak di State mana pun yang sedang aktif
-            // Angka 0f sampai 1f artinya melompat antara frame awal sampai frame akhir animasi secara acak
-            // Angka 0 di tengah adalah index layer (Base Layer = 0)
+            // 2. Paksa Animator melompat ke frame acak di State mana pun yang sedang aktif
+            // Sekarang aman dieksekusi karena runtimeAnimatorController sudah dipastikan TIDAK NULL
             anim.Play(0, -1, Random.Range(0f, 1f));
+        }
+        else
+        {
+            // Opsional: Memberi tahu developer di log objek mana yang kosongan
+            Debug.LogWarning($"[IdleRandomizer] Objek '{gameObject.name}' dilewati karena tidak memiliki Animator Controller di Inspector.", gameObject);
         }
 
         // Setelah mengacak, script ini otomatis menghancurkan dirinya sendiri (Self Destruct)
-        // Agar tidak memakan memori/CPU saat game berjalan, karena tugasnya sudah selesai di awal.
         Destroy(this);
+    }
+
+    // Fungsi pembantu untuk mengecek apakah sebuah parameter float benar-benar eksis di Animator Controller
+    private bool HasParameter(Animator animator, string paramName)
+    {
+        foreach (AnimatorControllerParameter param in animator.parameters)
+        {
+            if (param.name == paramName) return true;
+        }
+        return false;
     }
 }

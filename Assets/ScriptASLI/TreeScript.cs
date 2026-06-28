@@ -90,17 +90,13 @@ public class TreeSimple : MonoBehaviour {
         if (player != null) {
             PlayerMovement moveScript = player.GetComponent<PlayerMovement>();
             if (moveScript != null) {
-                // 🔥 KUNCI UTAMA: Hanya jalankan animasi & LookAt jika ini adalah PUKULAN PERTAMA (hitCount == 0)
-                if (hitCount == 0) {
-                    moveScript.StartHarvesting(); 
-                    // Vector3 targetPos = transform.position;
-                    // targetPos.y = player.transform.position.y;
-                    
-                    // // 1. Hadapkan ke pohon (akan terbalik ke selatan karena pivot model)
-                    // player.transform.LookAt(targetPos);
-                    
-                    // // 2. 🔥 PERBAIKAN: Putar balik badan player 180 derajat agar menghadap ke pohon dengan benar!
-                    // player.transform.Rotate(0f, 180f, 0f);
+                // 🔥 PERBAIKAN: Selalu nyalakan status harvesting setiap tombol diklik (Bukan cuma pas hitCount == 0)
+                moveScript.StartHarvesting(); 
+
+                // 🔥 KUNCI UTAMA: Paksa animator memutar ulang animasi tebang pohon dari frame 0 di SETIAP KLIK
+                // Pastikan "Tebang" di bawah ini diganti dengan nama kotak State Animasi menebangmu di Animator Controller!
+                if (moveScript.anim != null) {
+                    moveScript.anim.Play("Tebang", 0, 0f); 
                 }
             }
         }
@@ -125,7 +121,6 @@ public class TreeSimple : MonoBehaviour {
             Invoke("UpdateLogo", 0.1f);
             Invoke("UpdateVisualPohonTanpaSkip", 0.1f); 
         } else {
-            
             Tumbang();
         }
     }
@@ -178,11 +173,15 @@ public class TreeSimple : MonoBehaviour {
             LeanTween.scale(modelTerakhir, Vector3.zero, 0.3f).setEaseInBack().setOnComplete(() => {
                 modelTerakhir.SetActive(false);
             });
-            SpawnCoins(centerPos); // Koin yang akan kasih kayu, bukan fungsi ini
+            SpawnCoins(centerPos); 
         }
 
-        // HAPUS ATAU KOMENTAR BARIS DI BAWAH INI:
-        // InventoryManager.instance.AddWood(1, (int)jenisPohon); 
+        // 🔥 TAMBAHAN BARU: Laporkan tebangan secara real-time ke TaskManager begitu pohon tumbang!
+        if (InventoryManager.instance != null && TaskManager.instance != null) {
+            // Kita tambah 1 karena di frame ini Inventory mungkin baru akan bertambah dari koin magnet
+            int estimasiTotalKayu = InventoryManager.instance.totalWoodCollected + 1;
+            TaskManager.instance.UpdateTebangProgress(estimasiTotalKayu);
+        }
 
         StartCoroutine(RespawnRoutine());
     }

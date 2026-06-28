@@ -2,8 +2,8 @@ using UnityEngine;
 
 public class MiningCoinMagnet : MonoBehaviour {
     public Transform target;
-    public float speed = 2f;          
-    public float acceleration = 22f;  
+    public float speed = 0.5f;          
+    public float acceleration = 8f;  
 
     private bool sudahDiserap = false;
 
@@ -32,6 +32,7 @@ public class MiningCoinMagnet : MonoBehaviour {
             }
         }
 
+        // Jika koin sudah sampai tepat di kepala player
         // Jika koin sudah sampai tepat di kepala player
         if (jarakKeKepala < 0.3f) {
             sudahDiserap = true;

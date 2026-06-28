@@ -84,13 +84,13 @@ public class PlayerMovement : MonoBehaviour {
     } // 🔥 KUNCI PERBAIKAN: Kurung kurawal penutup fungsi StopMining() yang tadi hilang sudah ditambahkan di sini!
 
     void Update() {
-        if (anim != null && anim.GetBool("isHarvesting")) 
-        {
-            if (walkAudioSource != null && walkAudioSource.isPlaying) {
-                walkAudioSource.Stop();
-            }
-            return; 
-        }
+        // if (anim != null && anim.GetBool("isHarvesting")) 
+        // {
+        //     if (walkAudioSource != null && walkAudioSource.isPlaying) {
+        //         walkAudioSource.Stop();
+        //     }
+        //     return; 
+        // }
 
         float horizontal = joystick.Horizontal; 
         float vertical = joystick.Vertical; 

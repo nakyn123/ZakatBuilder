@@ -50,6 +50,18 @@ public class TaskManager : MonoBehaviour {
     public AudioClip suaraEmasDapat;         
     public RectTransform posisiTargetEmasHUD; 
 
+    [Header("Misi 4: Tambang Emas/Perak (Babak 2)")]
+    public GameObject barTambangLogam;       // Bar UI Baru untuk Misi Tambang
+    public Button btnAmbilTambangLogam;       // Tombol Ambil Hadiah
+    public Image imgBtnTambangLogam;         // Gambar Tombol Ambil
+    public Slider sliderTambangLogam;         // Slider Progress
+    public TextMeshProUGUI txtTambangLogam;   // Teks UI Misi (0/15)
+    public int targetTambangLogam = 15;       // Target 15 kali
+    public int rewardTambangLogam = 5000000;  // Hadiah 5 Juta Rupiah
+    [HideInInspector] public int totalLogamMinedCount = 0; // Hitungan progress saat ini
+    private bool isTambangLogamDone = false;
+    private bool isTambangLogamClaimed = false;
+
     private Coroutine typewriterCoroutine;
     private bool edaranSedangMengetik = false;
 
@@ -94,6 +106,7 @@ public class TaskManager : MonoBehaviour {
     void Awake() { instance = this; }
 
     void Start() {
+        if (barTambangLogam != null) barTambangLogam.SetActive(false);
         if (misiPanel != null) misiPanel.SetActive(false);
         if (asetBlur != null) asetBlur.SetActive(false);
         if (barTebangPohon != null) barTebangPohon.SetActive(false); 
@@ -128,7 +141,9 @@ public class TaskManager : MonoBehaviour {
     private void ResetSeluruhProgressMisi()
     {
         Debug.Log("<color=yellow>[TaskManager]</color> Scene Gameplay Mendeteksi Restart. Mengembalikan posisi objek ke awal...");
-        
+        PlayerPrefs.SetInt("Saved_EdaranSelesai", 0);
+        if (barTambangLogam != null) barTambangLogam.SetActive(false);
+
         woodOffset = 0; 
         isMisi2Started = false; 
         isJualDone = false; 
@@ -243,6 +258,17 @@ public class TaskManager : MonoBehaviour {
         isiPakanCount = PlayerPrefs.GetInt("Saved_IsiPakanCount", 0);
         isIsiPakanDone = PlayerPrefs.GetInt("Saved_IsIsiPakanDone", 0) == 1;
         isIsiPakanClaimed = PlayerPrefs.GetInt("Saved_IsIsiPakanClaimed", 0) == 1;
+        // 🔥 LOAD PROGRESS TAMBANG BABAK 2
+        isTambangLogamDone = PlayerPrefs.GetInt("Saved_IsTambangLogamDone", 0) == 1;
+        isTambangLogamClaimed = PlayerPrefs.GetInt("Saved_IsTambangLogamClaimed", 0) == 1;
+        totalLogamMinedCount = PlayerPrefs.GetInt("Saved_TotalLogamMinedCount", 0);
+
+        if (barTambangLogam != null) {
+            // Muncul jika Surat Edaran sudah ditutup (btnBukaEdaranKades sudah nonaktif) dan belum diklaim
+            bool edaranSelesai = PlayerPrefs.GetInt("Saved_EdaranSelesai", 0) == 1;
+            barTambangLogam.SetActive(edaranSelesai && !isTambangLogamClaimed);
+            if (barTambangLogam.activeSelf) UpdateTambangLogamProgress(totalLogamMinedCount);
+        }
 
         woodOffset = PlayerPrefs.GetInt("Saved_WoodOffset", 0);
         if (MoneyManager.instance != null)
@@ -294,6 +320,10 @@ public class TaskManager : MonoBehaviour {
         PlayerPrefs.SetInt("Saved_IsiPakanCount", isiPakanCount);
         PlayerPrefs.SetInt("Saved_IsIsiPakanDone", isIsiPakanDone ? 1 : 0);
         PlayerPrefs.SetInt("Saved_IsiPakanClaimed", isIsiPakanClaimed ? 1 : 0);
+        // 🔥 SIMPAN PROGRESS TAMBANG BABAK 2
+        PlayerPrefs.SetInt("Saved_IsTambangLogamDone", isTambangLogamDone ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsTambangLogamClaimed", isTambangLogamClaimed ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_TotalLogamMinedCount", totalLogamMinedCount);
 
         PlayerPrefs.SetInt("Saved_WoodOffset", woodOffset);
 
@@ -337,6 +367,10 @@ public class TaskManager : MonoBehaviour {
             
             if (!sudahLevel3 && !isMisi2Claimed && InventoryManager.instance != null) {
                 UpdateTebangProgress(InventoryManager.instance.totalWoodCollected);
+            }
+            // 🔥 TAMBAHAN PENGAMAN: Segarkan tampilan visual bar tambang logam saat panel dibuka
+            if (barTambangLogam != null && barTambangLogam.activeSelf) {
+                UpdateTambangLogamProgress(totalLogamMinedCount);
             }
         }
     }
@@ -409,7 +443,7 @@ public class TaskManager : MonoBehaviour {
         }
     }
 
-    public void UpdateTebangProgress(int totalCount) {
+   public void UpdateTebangProgress(int totalCount) {
         if (totalCount >= 1 && PlayerPrefs.GetInt("Panel17Selesai", 0) == 0) {
             PlayerPrefs.SetInt("Panel17Selesai", 1);
             PlayerPrefs.Save();
@@ -421,24 +455,29 @@ public class TaskManager : MonoBehaviour {
 
         if (isMisi2Claimed) return; 
 
-        // 🔥 PERBAIKAN LOGIKA: Hapus syarat 'isMisi2Started' agar perhitungan slider bisa di-update secara berkala di background
+        int progressMisiSekarang = totalCount - woodOffset; 
+        if (progressMisiSekarang < 0) progressMisiSekarang = 0;
+
+        if (progressMisiSekarang >= 15) {
+            if (ReminderManager.instance != null) {
+                ReminderManager.instance.TriggerJualKayuReminder(); 
+            }
+        }
+
+        // 🔥 PASTIKAN DI SINI: Teksnya murni "Tebang Pohon", jangan sampai ketulis Tambang!
         if (barTebangPohon != null && barTebangPohon.activeSelf) {
-            int progressMisiSekarang = totalCount - woodOffset; 
-            if (progressMisiSekarang < 0) progressMisiSekarang = 0;
+            if (sliderTebang != null) {
+                sliderTebang.maxValue = targetTebang;
+                sliderTebang.value = progressMisiSekarang;
+            }
 
-            sliderTebang.maxValue = targetTebang;
-            sliderTebang.value = progressMisiSekarang;
-            txtTebang.text = "Tebang Pohon (" + progressMisiSekarang.ToString() + "/" + targetTebang.ToString() + ")";
-
-            if (progressMisiSekarang >= 15) {
-                if (ReminderManager.instance != null) {
-                    ReminderManager.instance.TriggerJualKayuReminder();
-                }
+            if (txtTebang != null) {
+                txtTebang.text = "Tebang Pohon (" + progressMisiSekarang.ToString() + "/" + targetTebang.ToString() + ")";
             }
 
             if (progressMisiSekarang >= targetTebang) {
                 isTebangDone = true;
-                imgBtnTebangPohon.sprite = btnHijauAmbil;
+                if (imgBtnTebangPohon != null) imgBtnTebangPohon.sprite = btnHijauAmbil;
                 if (!misiPanel.activeSelf && ikonNotifikasi != null) {
                     ikonNotifikasi.SetActive(true);
                 }
@@ -590,6 +629,21 @@ public class TaskManager : MonoBehaviour {
                 }
                 teksPlusObj.transform.SetParent(posisiTargetEmasHUD.parent, true); 
                 teksPlusObj.transform.SetAsLastSibling(); 
+            }
+            // 🔥 AKTIFKAN MISI TAMBANG EMAS/PERAK
+            PlayerPrefs.SetInt("Saved_EdaranSelesai", 1); // Tandai edaran kades clear
+            PlayerPrefs.Save();
+
+            if (barEdaranKades != null) barEdaranKades.SetActive(false); // Hilangkan bar edaran
+
+            if (barTambangLogam != null) {
+                barTambangLogam.SetActive(true);
+                barTambangLogam.transform.SetAsFirstSibling();
+                UpdateTambangLogamProgress(totalLogamMinedCount); // Set tulisan (0/15) awal
+            }
+
+            if (ikonNotifikasi != null && !misiPanel.activeSelf) {
+                ikonNotifikasi.SetActive(true);
             }
         }
     }
@@ -765,6 +819,57 @@ public class TaskManager : MonoBehaviour {
         if (isBeliPakanClaimed && isIsiPakanClaimed)
         {
             Debug.Log("<color=cyan>[Task Manager]</color> Babak 3 SELESAI MUTLAK!");
+        }
+    }
+
+    // 🔥 FUNGSI BARU: Mengupdate hitungan nambang (0/15) secara real-time
+    // 🔥 FUNGSI BARU: Mengupdate hitungan nambang (0/15) secara real-time
+    public void UpdateTambangLogamProgress(int totalCount) {
+        if (isTambangLogamClaimed) return;
+
+        // KUNCI: Data harus selalu diupdate dan disimpan di background terlebih dahulu!
+        totalLogamMinedCount = totalCount;
+        PlayerPrefs.SetInt("Saved_TotalLogamMinedCount", totalLogamMinedCount);
+        PlayerPrefs.Save();
+
+        // Logika evaluasi status misi selesai (pindahkan ke luar pengecekan bar UI)
+        if (totalLogamMinedCount >= targetTambangLogam) {
+            isTambangLogamDone = true;
+            if (imgBtnTambangLogam != null) imgBtnTambangLogam.sprite = btnHijauAmbil;
+            if (!misiPanel.activeSelf && ikonNotifikasi != null) {
+                ikonNotifikasi.SetActive(true);
+            }
+        }
+
+        // 🔥 Hanya urusan visual teks dan slider yang dimasukkan ke dalam gerbang activeSelf
+        if (barTambangLogam != null && barTambangLogam.activeSelf) {
+            if (sliderTambangLogam != null) {
+                sliderTambangLogam.maxValue = targetTambangLogam;
+                sliderTambangLogam.value = totalLogamMinedCount;
+            }
+
+            if (txtTambangLogam != null) {
+                txtTambangLogam.text = "Tambang Emas/Perak (" + totalLogamMinedCount.ToString() + "/" + targetTambangLogam.ToString() + ")";
+            }
+        }
+    }
+
+    // 🔥 FUNGSI BARU: Dipasang ke Button 'btnAmbilTambangLogam' di Inspector
+    public void AmbilHadiahTambangLogam() {
+        if (isTambangLogamDone && !isTambangLogamClaimed) {
+            isTambangLogamClaimed = true;
+
+            PlayRewardEffects(rewardTambangLogam, btnAmbilTambangLogam.transform);
+
+            if (MoneyManager.instance != null) {
+                MoneyManager.instance.AddMoney(rewardTambangLogam);
+            }
+
+            btnAmbilTambangLogam.gameObject.SetActive(false);
+            if (txtTambangLogam != null) txtTambangLogam.text = "Misi Selesai!";
+            
+            if (barTambangLogam != null) barTambangLogam.SetActive(false);
+            SimpanProgressGameKeKomputer();
         }
     }
 }

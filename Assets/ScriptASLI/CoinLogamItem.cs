@@ -19,7 +19,10 @@ public class CoinLogamItem : MonoBehaviour
 
     private Vector3 startPosition;
     private bool isTargetedByMagnet = false;
-    private bool sudahDiambil = false; // Pengaman agar fungsi tidak terduplikasi dalam satu frame
+    private bool sudahDiambil = false; 
+
+    // 🔥 BARU: Menyimpan koordinat tempat batu hancur agar text muncul di sana
+    private Vector3 spawnLocation; 
 
     void Start()
     {
@@ -29,9 +32,20 @@ public class CoinLogamItem : MonoBehaviour
         }
     }
 
+    // 🔥 BARU: Fungsi pembantu untuk menerima data koordinat dari MiningScript
+    public void SetSpawnLocation(Vector3 pos)
+    {
+        spawnLocation = pos;
+    }
+
     void Update()
     {
-        transform.Rotate(Vector3.up * rotateSpeed * Time.deltaTime);
+        // 🔥 MODIFIKASI: Jika koin baru meloncat (belum diserap sepenuhnya/kinematic), 
+        // putar koin jauh lebih cepat (dikali 4) agar memberi efek visual putaran udara yang mantap!
+        Rigidbody rb = GetComponent<Rigidbody>();
+        float currentRotateSpeed = (rb != null && !rb.isKinematic) ? rotateSpeed * 4f : rotateSpeed;
+
+        transform.Rotate(Vector3.up * currentRotateSpeed * Time.deltaTime);
         
         if (!isTargetedByMagnet) {
             float newY = startPosition.y + (Mathf.Sin(Time.time * floatSpeed) * floatHeight);
@@ -39,7 +53,6 @@ public class CoinLogamItem : MonoBehaviour
         }
     }
 
-    // Fungsi utama penambahan harta, sfx, dan teks
     public void AmbilKoinLogam(Transform playerTransform)
     {
         if (sudahDiambil) return;
@@ -75,17 +88,25 @@ public class CoinLogamItem : MonoBehaviour
             JurnalManager.instance.CheckEmasPerakNisab();
         }
 
+        // 🔥 TAMBAHAN UTAMA: Tambah progress misi tambang babak 2 saat koin diserap tubuh player!
+        if (TaskManager.instance != null) {
+            int progressTerbaru = TaskManager.instance.totalLogamMinedCount + 1;
+            TaskManager.instance.UpdateTambangLogamProgress(progressTerbaru);
+        }
+
+        // 🔥 MODIFIKASI UTAMA: Floating Text dipindahkan ke posisi spawnLocation (bekas batu hancur)
         if (floatingTextPrefab != null)
         {
-            Vector3 spawnPosition = playerTransform.position + new Vector3(0f, 1.7f, 0f); 
-            GameObject textObj = Instantiate(floatingTextPrefab, spawnPosition, Quaternion.identity);
+            // Jika data belum terisi, default-nya pakai posisi koin saat ini
+            Vector3 textSpawnPos = (spawnLocation != Vector3.zero) ? spawnLocation + new Vector3(0f, 1f, 0f) : transform.position;
+            
+            GameObject textObj = Instantiate(floatingTextPrefab, textSpawnPos, Quaternion.identity);
             textObj.GetComponent<FloatingText>().SetText("+" + jumlahGram + " gr");
         }
 
         Destroy(gameObject);
     }
 
-    // 🔥 PENGAMAN CADANGAN: Jika koin membentur fisik player di jalan, langsung serap seketika!
     private void OnTriggerEnter(Collider other) 
     {
         if (sudahDiambil) return;

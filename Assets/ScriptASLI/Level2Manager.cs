@@ -38,47 +38,47 @@ public class Level2Manager : MonoBehaviour
     }
 
     public void SwitchToLevel2()
-{
-    Debug.Log("<color=cyan>[Level 2 Manager]</color> Mengaktifkan seluruh environment Babak 2...");
-
-    if (MoneyManager.instance != null)
     {
-        MoneyManager.instance.totalEmas = 0;   
-        MoneyManager.instance.totalPerak = 100; 
-        MoneyManager.instance.UpdateEmasPerakUI();
+        Debug.Log("<color=cyan>[Level 2 Manager]</color> Mengaktifkan seluruh environment Babak 2...");
+
+        if (MoneyManager.instance != null)
+        {
+            MoneyManager.instance.totalEmas = 0;   
+            MoneyManager.instance.totalPerak = 100; 
+            MoneyManager.instance.UpdateEmasPerakUI();
+        }
+
+        if (txtPerakUtama != null) txtPerakUtama.text = "100 gr";
+        if (txtEmasUtama != null) txtEmasUtama.text = "0 gr";
+
+        if (environmentLevel2 != null) environmentLevel2.SetActive(true);
+        if (navCoinLeftEmasPerak != null) navCoinLeftEmasPerak.SetActive(true);
+
+        if (koinLevel2Container != null) koinLevel2Container.SetActive(false);
+
+        if (ZakatPanelManager.instance != null)
+        {
+            ZakatPanelManager.instance.isPerdaganganCompleted = true; 
+            ZakatPanelManager.instance.isPerdaganganUnlocked = true;   
+            ZakatPanelManager.instance.UpdateCheckmarkVisuals();       
+            ZakatPanelManager.instance.UpdatePaymentButtonVisual();    
+        }
+
+        if (JurnalManager.instance != null)
+        {
+            if (JurnalManager.instance.visualHalamanLock != null) JurnalManager.instance.visualHalamanLock.SetActive(false);
+            if (JurnalManager.instance.visualHalamanUnlock != null) JurnalManager.instance.visualHalamanUnlock.SetActive(true);
+            if (JurnalManager.instance.navCoinLeftPanel != null) JurnalManager.instance.navCoinLeftPanel.SetActive(true);
+            JurnalManager.instance.CheckEmasPerakNisab();
+        }
+
+        // 🔥 KUNCI PERBAIKAN: Matikan semua bar Level 1 & Aktifkan Misi Edaran Desa
+        if (TaskManager.instance != null)
+        {
+            if (TaskManager.instance.barTebangJual != null) TaskManager.instance.barTebangJual.SetActive(false);
+            if (TaskManager.instance.barTebangPohon != null) TaskManager.instance.barTebangPohon.SetActive(false);
+            
+            TaskManager.instance.AktifkanMisiEdaranKades();
+        }
     }
-
-    if (txtPerakUtama != null) txtPerakUtama.text = "100 gr";
-    if (txtEmasUtama != null) txtEmasUtama.text = "0 gr";
-
-    if (environmentLevel2 != null) environmentLevel2.SetActive(true);
-    if (navCoinLeftEmasPerak != null) navCoinLeftEmasPerak.SetActive(true);
-
-    if (koinLevel2Container != null) koinLevel2Container.SetActive(false);
-
-    // =================================================================
-    // 🔥 UTAMA: KUNCI & CENTANG ZAKAT PERDAGANGAN SAAT MASUK LEVEL 2
-    // =================================================================
-    if (ZakatPanelManager.instance != null)
-    {
-        ZakatPanelManager.instance.isPerdaganganCompleted = true; // Set status selesai
-        ZakatPanelManager.instance.isPerdaganganUnlocked = true;   // Pastikan status unlock aman
-        ZakatPanelManager.instance.UpdateCheckmarkVisuals();       // Nyalakan gambar centang & refresh warna panel
-        ZakatPanelManager.instance.UpdatePaymentButtonVisual();    // Gelapkan tombol bayar 3D jika fokus di dagang
-    }
-    // =================================================================
-
-    if (JurnalManager.instance != null)
-    {
-        if (JurnalManager.instance.visualHalamanLock != null) JurnalManager.instance.visualHalamanLock.SetActive(false);
-        if (JurnalManager.instance.visualHalamanUnlock != null) JurnalManager.instance.visualHalamanUnlock.SetActive(true);
-        if (JurnalManager.instance.navCoinLeftPanel != null) JurnalManager.instance.navCoinLeftPanel.SetActive(true);
-        JurnalManager.instance.CheckEmasPerakNisab();
-    }
-
-    if (TaskManager.instance != null)
-    {
-        TaskManager.instance.AktifkanMisiEdaranKades();
-    }
-}
 }

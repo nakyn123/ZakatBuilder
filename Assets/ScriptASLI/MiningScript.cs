@@ -89,14 +89,10 @@ public class MiningScript : MonoBehaviour {
         if (player != null) {
             PlayerMovement moveScript = player.GetComponent<PlayerMovement>();
             if (moveScript != null) {
-                // Klik pertama mengaktifkan beliung dan status mining
-                if (hitCount == 0) {
-                    moveScript.StartMining(); 
-                }
+                // 🔥 PERBAIKAN: Selalu pastikan status Mining aktif di setiap klik, bukan cuma pas hitCount == 0
+                moveScript.StartMining(); 
 
-                // 🔥 KUNCI UTAMA: Paksa animator memutar ulang animasi nambang dari frame 0 di SETIAP KLIK
-                // "isMining" adalah nama parameter, tapi di sini kita panggil nama "State" animasinya di Animator Controller.
-                // Pastikan ganti "Nambang" di bawah ini dengan nama kotak State Animasi nambangmu di Unity Animator!
+                // Paksa animator memutar ulang animasi nambang dari frame 0
                 if (moveScript.anim != null) {
                     moveScript.anim.Play("Nambang", 0, 0f); 
                 }
@@ -187,24 +183,20 @@ public class MiningScript : MonoBehaviour {
         
         GameObject player = GameObject.FindGameObjectWithTag("Player");
 
-        // KOIN 1: Lahir di tengah-tengah, agak di atas kepala dikit (ketinggian 2.3f)
-        Vector3 posKoin1 = position + new Vector3(0f, 2.3f, 0f);
-        SpawnAnakKoin(posKoin1, new Vector3(Random.Range(-0.2f, 0.2f), 2.5f, Random.Range(-0.2f, 0.2f)), player);
+        // POSISI AWAL: Di tempat batu hancur
+        Vector3 posKoinUtama = position + new Vector3(0f, 1.5f, 0f);
+        
+        // 🔥 MODIFIKASI: Dorong gaya vertikal (Y) ke atas lebih tinggi (5.0f) agar koin melambung tinggi dulu
+        Vector3 forceDirection = new Vector3(Random.Range(-0.3f, 0.3f), 5.0f, Random.Range(-0.3f, 0.3f));
 
-        // KOIN 2: Lahir agak geser kanan dikit (jarak 0.5f), tinggi 2.0f, mantul tipis ke kanan
-        Vector3 posKoin2 = position + new Vector3(0.5f, 2.0f, Random.Range(-0.3f, 0.3f));
-        SpawnAnakKoin(posKoin2, new Vector3(1.2f, 2.0f, Random.Range(0.2f, 0.8f)), player);
-
-        // KOIN 3: Lahir agak geser kiri dikit (jarak -0.5f), tinggi 1.8f, mantul tipis ke kiri
-        Vector3 posKoin3 = position + new Vector3(-0.5f, 1.8f, Random.Range(-0.3f, 0.3f));
-        SpawnAnakKoin(posKoin3, new Vector3(-1.2f, 1.5f, Random.Range(-0.8f, -0.2f)), player);
+        SpawnAnakKoin(posKoinUtama, forceDirection, player);
     }
 
-    // Fungsi pembantu spawn koin kecil (tetap sama, jangan diubah)
     void SpawnAnakKoin(Vector3 spawnPos, Vector3 forceDirection, GameObject player) {
         GameObject koinKecil = Instantiate(coinLogamPrefab, spawnPos, Quaternion.identity);
         
-        koinKecil.transform.localScale = new Vector3(0.35f, 0.35f, 0.35f);
+        // Ukuran koin tetap besar (0.65f) sesuai request sebelumnya
+        koinKecil.transform.localScale = new Vector3(0.25f, 0.25f, 0.25f);
 
         Rigidbody rb = koinKecil.GetComponent<Rigidbody>();
         if (rb != null) {
@@ -216,7 +208,10 @@ public class MiningScript : MonoBehaviour {
             if (jenisLogam == MiningType.Emas) logamItem.jenisLogam = CoinLogamItem.JenisLogam.Emas;
             else logamItem.jenisLogam = CoinLogamItem.JenisLogam.Perak;
 
-            logamItem.jumlahGram = Mathf.CeilToInt((float)totalHadiahGram / 3f); 
+            logamItem.jumlahGram = totalHadiahGram; 
+            
+            // 🔥 BARU: Simpan posisi awal tempat spawn batu di koin, untuk referensi Floating Text nanti
+            logamItem.SetSpawnLocation(spawnPos);
         }
 
         MiningCoinMagnet magnetBaru = koinKecil.GetComponent<MiningCoinMagnet>();

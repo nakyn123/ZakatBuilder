@@ -19,6 +19,9 @@ public class PlayerMovement : MonoBehaviour {
     public TouchLookInput rightTouchInput; 
     public float sprintSpeedMultiplier = 2f;
 
+    // 🌟 VARIABEL BARU: Pengunci pergerakan saat menebang/menambang
+    [HideInInspector] public bool isLockedInAction = false; 
+
     void Start() {
         if (PlayerPrefs.GetInt("IsRestarted", 0) == 0 && PlayerPrefs.HasKey("Saved_PlayerX")) {
             if (controller != null) controller.enabled = false; 
@@ -81,16 +84,26 @@ public class PlayerMovement : MonoBehaviour {
         if (beliungObject != null) {
             beliungObject.SetActive(false); 
         }
-    } // 🔥 KUNCI PERBAIKAN: Kurung kurawal penutup fungsi StopMining() yang tadi hilang sudah ditambahkan di sini!
+    }
 
     void Update() {
-        // if (anim != null && anim.GetBool("isHarvesting")) 
-        // {
-        //     if (walkAudioSource != null && walkAudioSource.isPlaying) {
-        //         walkAudioSource.Stop();
-        //     }
-        //     return; 
-        // }
+        // 🌟 PERBAIKAN UTAMA: Jika sedang dikunci, paksa player diam dan abaikan input joystick
+        if (isLockedInAction) {
+            if (walkAudioSource != null && walkAudioSource.isPlaying) {
+                walkAudioSource.Stop();
+            }
+            if (anim != null) {
+                anim.SetBool("isWalking", false);
+            }
+            
+            // Tetap jalankan kalkulasi gravitasi agar player tidak melayang saat terkunci
+            if (controller.isGrounded && velocity.y < 0) { 
+                velocity.y = -2f; 
+            }
+            velocity.y += gravity * Time.deltaTime; 
+            controller.Move(velocity * Time.deltaTime);
+            return; // Keluar dari fungsi Update agar input pergerakan di bawah tidak dieksekusi
+        }
 
         float horizontal = joystick.Horizontal; 
         float vertical = joystick.Vertical; 

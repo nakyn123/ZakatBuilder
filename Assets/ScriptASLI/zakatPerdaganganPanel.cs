@@ -319,6 +319,14 @@ public class ZakatPerdaganganPanel : MonoBehaviour
 
     void OnEnable()
     {
+        // 🛡️ Proteksi Ganda: Jika ternyata sudah selesai, langsung matikan paksa!
+        if (ZakatPanelManager.instance != null && ZakatPanelManager.instance.isPerdaganganCompleted)
+        {
+            Debug.Log("[Proteksi] Panel Dagang mendeteksi sudah completed. Mematikan diri!");
+            gameObject.SetActive(false);
+            return;
+        }
+
         if (panelKuisBG != null) panelKuisBG.SetActive(true);
         if (panelFormKuis != null) panelFormKuis.SetActive(false);
         if (panelRewardDagang != null) panelRewardDagang.SetActive(false);
@@ -353,7 +361,9 @@ public class ZakatPerdaganganPanel : MonoBehaviour
         
         ZakatPanelManager panelManager = FindFirstObjectByType<ZakatPanelManager>();
         if (panelManager != null) { panelManager.isPerdaganganUnlocked = true; panelManager.UpdatePaymentButton(); panelManager.UpdateItemVisuals(); }
-        
+        if (TaskManager.instance != null) {
+            TaskManager.instance.NotifyZakatPaid();
+        }
         // 🔥 PERBAIKAN MANUALLY ATTACHED BUTTON X
         if (panelBabLvl2 != null)
         {

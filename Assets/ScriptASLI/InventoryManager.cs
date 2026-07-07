@@ -146,37 +146,50 @@ public class InventoryManager : MonoBehaviour {
     }
 
     public void ToggleInventory() {
-        if (inventoryPanel == null) return;
-        bool currentState = inventoryPanel.activeSelf;
+        if (inventoryPanel == null) return; //
+        bool currentState = inventoryPanel.activeSelf; //[cite: 17]
 
         if (!currentState) {
-            // 🔥 TAMBAHAN: Suara saat tas DIBUKA
-            if (audioSourceInventory != null && suaraBukaInventory != null) {
-                audioSourceInventory.PlayOneShot(suaraBukaInventory);
+            // 🔥 TAMBAHAN: Suara saat tas DIBUKA[cite: 17]
+            if (audioSourceInventory != null && suaraBukaInventory != null) { //[cite: 17]
+                audioSourceInventory.PlayOneShot(suaraBukaInventory); //[cite: 17]
+            } //[cite: 17]
+
+            if (UIManager.instance != null) UIManager.instance.OpenPanelMenu(inventoryPanel); //[cite: 17]
+            else inventoryPanel.SetActive(true); //[cite: 17]
+
+            UpdateUI(); //[cite: 17]
+
+            // 🔥 KUNCI PERBAIKAN: Cek apakah sedang di Level 2
+            bool isLevel2 = false;
+            if (Level2Manager.instance != null && Level2Manager.instance.environmentLevel2 != null) {
+                isLevel2 = Level2Manager.instance.environmentLevel2.activeSelf; // Aktif berarti Level 2[cite: 12, 15]
             }
-
-            if (UIManager.instance != null) UIManager.instance.OpenPanelMenu(inventoryPanel);
-            else inventoryPanel.SetActive(true);
-
-            UpdateUI();
 
             if (navCoinObject != null) {
-                navCoinObject.transform.SetParent(inventoryPanel.transform);
-                navCoinObject.transform.SetAsLastSibling();
-                navCoinObject.SetActive(true);
+                if (isLevel2) {
+                    // 🛑 KHUSUS LEVEL 2: Sembunyikan/jangan tampilkan nav coin rupiah[cite: 12, 17]
+                    navCoinObject.SetActive(false);
+                }
+                else {
+                    // 🟢 LEVEL 1: Munculkan nav coin secara normal[cite: 12, 17]
+                    navCoinObject.transform.SetParent(inventoryPanel.transform); //[cite: 17]
+                    navCoinObject.transform.SetAsLastSibling(); //[cite: 17]
+                    navCoinObject.SetActive(true); //[cite: 17]
+                }
             }
         } else {
-            // 🔥 TAMBAHAN: Suara saat tas DITUTUP
-            if (audioSourceInventory != null && suaraTutupInventory != null) {
-                audioSourceInventory.PlayOneShot(suaraTutupInventory);
-            }
+            // 🔥 TAMBAHAN: Suara saat tas DITUTUP[cite: 17]
+            if (audioSourceInventory != null && suaraTutupInventory != null) { //[cite: 17]
+                audioSourceInventory.PlayOneShot(suaraTutupInventory); //[cite: 17]
+            } //[cite: 17]
 
-            if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(inventoryPanel);
-            else inventoryPanel.SetActive(false);
+            if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(inventoryPanel); //[cite: 17]
+            else inventoryPanel.SetActive(false); //[cite: 17]
 
-            if (navCoinObject != null && originalNavCoinParent != null) {
-                navCoinObject.transform.SetParent(originalNavCoinParent);
-            }
+            if (navCoinObject != null && originalNavCoinParent != null) { //[cite: 17]
+                navCoinObject.transform.SetParent(originalNavCoinParent); //[cite: 17]
+            } //[cite: 17]
         }
     }
 

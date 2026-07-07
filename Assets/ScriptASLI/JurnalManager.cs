@@ -450,6 +450,13 @@ public class JurnalManager : MonoBehaviour
                 if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(true);
                 isEmasPerakNotificationShown = true; 
             }
+
+            // 🌟 HUBUNGKAN KE TASK MANAGER BABAK 2:
+            // Jika pemain sudah selesai menambang 15 kali, langsung munculkan tombol ke Kantor Zakat
+            if (TaskManager.instance != null)
+            {
+                TaskManager.instance.CekPemicuZakatEmasPerak();
+            }
         }
         else
         {
@@ -484,6 +491,13 @@ public class JurnalManager : MonoBehaviour
             {
                 if (ikonNotifikasiJurnal != null) ikonNotifikasiJurnal.SetActive(true);
                 isTernakNotificationShown = true;
+            }
+
+            // 🌟 HUBUNGKAN KE TASK MANAGER BABAK 3:
+            // Jika pemain sudah selesai memberi pakan, langsung munculkan tombol ke Kantor Zakat
+            if (TaskManager.instance != null)
+            {
+                TaskManager.instance.CekPemicuZakatTernak();
             }
         }
         else

@@ -6,25 +6,50 @@ using System.Collections;
 public class TaskManager : MonoBehaviour {
     public static TaskManager instance;
 
-    [Header("UI Panels & Notification")]
+    // =================================================================
+    // 🖥️ UI GLOBAL PANELS, NOTIFICATIONS & AUDIO SETTINGS
+    // =================================================================
+    [Header("--- UI Global Panels & Notifications ---")]
     public GameObject misiPanel;
     public GameObject asetBlur; 
     public GameObject ikonNotifikasi; 
+    public GameObject rawImageHUDArrow; // Objek Raw Image di Gameplay-HUB
 
-    [Header("Misi Progress Logic")]
-    private int woodOffset = 0;
-    private bool isMisi2Started = false;
-    
-    [Header("Misi 1: Tebang + Jual")]
+    [Header("--- Global UI Visual & Audio Asset ---")]
+    public Sprite btnAbuAbu; 
+    public Sprite btnHijauAmbil; 
+    public AudioClip suaraBukaMisi;    
+    public AudioClip suaraTutupMisi;
+
+    // =================================================================
+    // 🗺️ NAVIGATION SYSTEM & 3D TARGETS
+    // =================================================================
+    [Header("--- Navigation System Scripts ---")]
+    public UI3DArrowNavigation ui3DArrowScript; //
+
+    [Header("--- Navigation UI Bars (Helper) ---")]
+    public GameObject barKeKantorZakat; //
+    public GameObject barKeTambang;         // Tarik ke-tambang-bar dari Hierarchy
+    public GameObject barKeToko; //
+    public GameObject barKeIsiPakan;        // Tarik ke-isi-pakan-bar dari Hierarchy
+
+    [Header("--- 3D Hologram World Targets ---")]
+    public Transform lokasiZakatCube; //
+    public Transform lokasiTambangCube;      // Tarik 3D Cube Transparan Tambang
+    public Transform lokasiTokoCube;         // Tarik 3D Cube Transparan Toko Hewan
+    public Transform lokasiIsiPakanCube;     // Tarik 3D Cube Transparan Tempat Pakan
+
+    // =================================================================
+    // 🌲 BABAK 1: MISI UTAMA LEVEL 1
+    // =================================================================
+    [Header("--- Babak 1: Misi 1 (Tebang + Jual) ---")]
     public GameObject barTebangJual;
     public Button btnAmbilTebangJual;
     public Image imgBtnTebangJual;
     public TextMeshProUGUI txtTebangJual;
     public int rewardMisi1 = 5000;
-    private bool isJualDone = false;
-    private bool isMisi1Claimed = false;
 
-    [Header("Misi 2: Tebang Pohon")]
+    [Header("--- Babak 1: Misi 2 (Tebang Pohon) ---")]
     public GameObject barTebangPohon; 
     public Button btnAmbilTebangPohon; 
     public Image imgBtnTebangPohon;
@@ -32,25 +57,37 @@ public class TaskManager : MonoBehaviour {
     public TextMeshProUGUI txtTebang;
     public int targetTebang = 5;
     public int rewardMisi2 = 10000;
-    private bool isTebangDone = false;
-    private bool isMisi2Claimed = false;
 
-    [Header("Misi 3: Surat Edaran Kades (Babak 2)")]
+    [Header("--- Babak 1: Misi 3 (Jual Aset / Nisab Uang) ---")]
+    public GameObject barJualNisab; // Nama di hierarchy: jual-nisab-bar
+    public Button btnAmbilJualNisab;
+    public Image imgBtnJualNisab;
+    public Slider sliderJualNisab;
+    public TextMeshProUGUI txtJualNisab;
+    public int targetNisabUang = 94000000; // Target 94 Juta
+    public int rewardMisiNisab = 25000;
+
+    [Header("--- Babak 1: UI Text Zakat Perdagangan ---")]
+    public TextMeshProUGUI txtKeKantorZakat; //
+
+    // =================================================================
+    // ⛏️ BABAK 2: MISI TAMBANG LEVEL 2
+    // =================================================================
+    [Header("--- Babak 2: Misi 1 (Surat Edaran Kades) ---")]
     public GameObject barEdaranKades;       
     public Button btnBukaEdaranKades;       
     public GameObject panelEdaranKades;
     public GameObject asetBlurEdaran;
-    
     public TextMeshProUGUI txtIsiEdaranKades; 
     public Button btnCloseEdaranKades;       
-    [TextArea(3, 10)]
-    public string teksLengkapEdaran;         
-    public float kecepatanKetik = 0.05f;    
     public AudioClip suaraBukaSurat;         
-    public AudioClip suaraEmasDapat;         
+    public AudioClip suaraEmasDapat;        
+    public GameObject prefabTeksPlusKades; 
     public RectTransform posisiTargetEmasHUD; 
+    [TextArea(3, 10)] public string teksLengkapEdaran; //
+    public float kecepatanKetik = 0.05f;    
 
-    [Header("Misi 4: Tambang Emas/Perak (Babak 2)")]
+    [Header("--- Babak 2: Misi 2 (Tambang Logam) ---")]
     public GameObject barTambangLogam;       // Bar UI Baru untuk Misi Tambang
     public Button btnAmbilTambangLogam;       // Tombol Ambil Hadiah
     public Image imgBtnTambangLogam;         // Gambar Tombol Ambil
@@ -58,65 +95,93 @@ public class TaskManager : MonoBehaviour {
     public TextMeshProUGUI txtTambangLogam;   // Teks UI Misi (0/15)
     public int targetTambangLogam = 15;       // Target 15 kali
     public int rewardTambangLogam = 5000000;  // Hadiah 5 Juta Rupiah
-    [HideInInspector] public int totalLogamMinedCount = 0; // Hitungan progress saat ini
-    private bool isTambangLogamDone = false;
-    private bool isTambangLogamClaimed = false;
 
-    private Coroutine typewriterCoroutine;
-    private bool edaranSedangMengetik = false;
-
-    [Header("Babak 3: Misi Peternakan")]
-    public GameObject barKeToko; 
+    // =================================================================
+    // 🐓 BABAK 3: MISI PETERNAKAN LEVEL 3
+    // =================================================================
+    [Header("--- Babak 3: Misi 1 (Beli Hewan Ternak) ---")]
+    public GameObject barBeliTernak; //
     public Button btnAmbilKeToko;
     public Image imgBtnKeToko; 
     public TextMeshProUGUI txtKeToko;
+    public Slider sliderBeliTernak;
     public int rewardKeToko = 15000;
-    private int beliHewanMisi1Count = 0; 
     private int targetBeliHewanMisi1 = 3;  
-    private bool isKeTokoDone = false;
-    private bool isKeTokoClaimed = false;
 
-    [Header("Babak 3: 3 Misi Serentak (Muncul setelah Misi 1 Claimed)")]
-    [Header("Misi Beli Pakan")]
+    [Header("--- Babak 3: Misi 2 (Beli Pakan Ternak) ---")]
     public GameObject barBeliPakan; 
     public Button btnAmbilBeliPakan;
     public Image imgBtnBeliPakan; 
     public TextMeshProUGUI txtBeliPakan;
     public int rewardBeliPakan = 5000;
-    private bool isBeliPakanDone = false;
-    private bool isBeliPakanClaimed = false;
 
-    [Header("Misi Isi Pakan")]
+    [Header("--- Babak 3: Misi 3 (Isi Pakan Ternak) ---")]
     public GameObject barIsiPakan; 
     public Button btnAmbilIsiPakan; 
     public Image imgBtnIsiPakan; 
     public TextMeshProUGUI txtIsiPakan;
     public int rewardIsiPakan = 10000; 
-    private int isiPakanCount = 0;
     private int targetIsiPakan = 6;
-    public bool isIsiPakanDone = false;
-    private bool isIsiPakanClaimed = false; 
 
-    [Header("Global UI Settings")]
-    public Sprite btnAbuAbu; 
-    public Sprite btnHijauAmbil; 
-    public AudioClip suaraBukaMisi;    
-    public AudioClip suaraTutupMisi;
+    // =================================================================
+    // 🔒 SYSTEM PRIVATE TRACKERS & HIDE IN INSPECTOR VARIABLES
+    // =================================================================
+    [HideInInspector] public int totalLogamMinedCount = 0; // Hitungan progress saat ini
+    [HideInInspector] public bool isIsiPakanDone = false; //
 
-    void Awake() { instance = this; }
+    // Babak 1 State Trackers
+    private int woodOffset = 0; //
+    private bool isMisi2Started = false; //
+    private bool isJualDone = false; //
+    private bool isMisi1Claimed = false; //
+    private bool isTebangDone = false; //
+    private bool isMisi2Claimed = false; //
+    private bool isNisabMisiDone = false; //
+    private bool isNisabMisiClaimed = false; //
+    private bool isZakatMisiDone = false; //
+    private bool isZakatMisiClaimed = false; //
+
+    // Babak 2 State Trackers
+    private bool isTambangLogamDone = false; //
+    private bool isTambangLogamClaimed = false; //
+    private bool edaranSedangMengetik = false; //
+    private Coroutine typewriterCoroutine; //
+
+    // Babak 3 State Trackers
+    private int beliHewanMisi1Count = 0; //
+    private bool isKeTokoDone = false; //
+    private bool isKeTokoClaimed = false; //
+    private bool isBeliPakanDone = false; //
+    private bool isBeliPakanClaimed = false; //
+    private int isiPakanCount = 0; //
+    private bool isIsiPakanClaimed = false; //
+
+
+    // =================================================================
+    // ⚙️ ENGINE CORE FUNCTIONS (START, UPDATE, INITIALIZATION)
+    // =================================================================
+    void Awake() { instance = this; } //
 
     void Start() {
-        if (barTambangLogam != null) barTambangLogam.SetActive(false);
-        if (misiPanel != null) misiPanel.SetActive(false);
-        if (asetBlur != null) asetBlur.SetActive(false);
-        if (barTebangPohon != null) barTebangPohon.SetActive(false); 
-        if (panelEdaranKades != null) panelEdaranKades.SetActive(false);
-        if (barEdaranKades != null) barEdaranKades.SetActive(false);
-        if (asetBlurEdaran != null) asetBlurEdaran.SetActive(false);
-        
-        isMisi2Started = false; 
+        if (barTambangLogam != null) barTambangLogam.SetActive(false); //
+        if (misiPanel != null) misiPanel.SetActive(false); //
+        if (asetBlur != null) asetBlur.SetActive(false); //
+        if (barTebangPohon != null) barTebangPohon.SetActive(false);  //
+        if (panelEdaranKades != null) panelEdaranKades.SetActive(false); //
+        if (barEdaranKades != null) barEdaranKades.SetActive(false); //
+        if (asetBlurEdaran != null) asetBlurEdaran.SetActive(false); //
+        if (barJualNisab != null) barJualNisab.SetActive(false); //
+        if (barKeKantorZakat != null) barKeKantorZakat.SetActive(false); //
 
-        StartCoroutine(JalankanPengecekanAwalGame());
+        isMisi2Started = false; //
+
+        StartCoroutine(JalankanPengecekanAwalGame()); //
+    }
+
+    void Update() {
+        if (isMisi2Claimed && !isNisabMisiClaimed) {
+            UpdateMisiNisabProgress();
+        }
     }
 
     private IEnumerator JalankanPengecekanAwalGame()
@@ -150,6 +215,10 @@ public class TaskManager : MonoBehaviour {
         isMisi1Claimed = false; 
         isTebangDone = false; 
         isMisi2Claimed = false; 
+        isNisabMisiDone = false;
+        isNisabMisiClaimed = false;
+        isZakatMisiDone = false;
+        isZakatMisiClaimed = false;
         beliHewanMisi1Count = 0; 
         isKeTokoDone = false; 
         isKeTokoClaimed = false; 
@@ -249,7 +318,10 @@ public class TaskManager : MonoBehaviour {
         isMisi2Started = PlayerPrefs.GetInt("Saved_IsMisi2Started", 0) == 1;
         isTebangDone = PlayerPrefs.GetInt("Saved_IsTebangDone", 0) == 1;
         isMisi2Claimed = PlayerPrefs.GetInt("Saved_IsMisi2Claimed", 0) == 1;
-        
+        isNisabMisiDone = PlayerPrefs.GetInt("Saved_IsNisabMisiDone", 0) == 1;
+        isNisabMisiClaimed = PlayerPrefs.GetInt("Saved_IsNisabMisiClaimed", 0) == 1;
+        isZakatMisiDone = PlayerPrefs.GetInt("Saved_IsZakatMisiDone", 0) == 1;
+        isZakatMisiClaimed = PlayerPrefs.GetInt("Saved_IsZakatMisiClaimed", 0) == 1;
         isKeTokoDone = PlayerPrefs.GetInt("Saved_IsKeTokoDone", 0) == 1;
         isKeTokoClaimed = PlayerPrefs.GetInt("Saved_IsKeTokoClaimed", 0) == 1;
         beliHewanMisi1Count = PlayerPrefs.GetInt("Saved_BeliHewanCount", 0);
@@ -257,30 +329,55 @@ public class TaskManager : MonoBehaviour {
         isBeliPakanClaimed = PlayerPrefs.GetInt("Saved_IsBeliPakanClaimed", 0) == 1;
         isiPakanCount = PlayerPrefs.GetInt("Saved_IsiPakanCount", 0);
         isIsiPakanDone = PlayerPrefs.GetInt("Saved_IsIsiPakanDone", 0) == 1;
-        isIsiPakanClaimed = PlayerPrefs.GetInt("Saved_IsIsiPakanClaimed", 0) == 1;
-        // 🔥 LOAD PROGRESS TAMBANG BABAK 2
+        isIsiPakanClaimed = PlayerPrefs.GetInt("Saved_IsiPakanClaimed", 0) == 1;
+        
         isTambangLogamDone = PlayerPrefs.GetInt("Saved_IsTambangLogamDone", 0) == 1;
         isTambangLogamClaimed = PlayerPrefs.GetInt("Saved_IsTambangLogamClaimed", 0) == 1;
         totalLogamMinedCount = PlayerPrefs.GetInt("Saved_TotalLogamMinedCount", 0);
 
-        if (barTambangLogam != null) {
-            // Muncul jika Surat Edaran sudah ditutup (btnBukaEdaranKades sudah nonaktif) dan belum diklaim
-            bool edaranSelesai = PlayerPrefs.GetInt("Saved_EdaranSelesai", 0) == 1;
-            barTambangLogam.SetActive(edaranSelesai && !isTambangLogamClaimed);
-            if (barTambangLogam.activeSelf) UpdateTambangLogamProgress(totalLogamMinedCount);
+        woodOffset = PlayerPrefs.GetInt("Saved_WoodOffset", 0);
+
+        // 🎯 DETEKSI STATUS LEVEL DARI PLAYERPREFS KESAYANGANMU
+        bool sudahMasukLevel2 = PlayerPrefs.GetInt("Saved_SudahLevel2", 0) == 1;
+
+        if (sudahMasukLevel2)
+        {
+            // 🔒 JIKA DI LEVEL 2: Paksa matikan semua bar misi kayu Level 1 agar tidak ketimpa!
+            if (barTebangJual != null) barTebangJual.SetActive(false);
+            if (barTebangPohon != null) barTebangPohon.SetActive(false);
+            if (barJualNisab != null) barJualNisab.SetActive(false);
+            if (barKeKantorZakat != null) barKeKantorZakat.SetActive(false);
+
+            // ⛏️ AKTIFKAN MISI TAMBANG EMAS/PERAK LEVEL 2
+            if (barTambangLogam != null) {
+                // Selama hadiah tambang belum diklaim, pastikan bar tambang logam selalu menyala di panel
+                barTambangLogam.SetActive(!isTambangLogamClaimed);
+                if (barTambangLogam.activeSelf) UpdateTambangLogamProgress(totalLogamMinedCount);
+            }
+        }
+        else
+        {
+            // 🌲 JIKA MASIH DI LEVEL 1: Jalankan logika load bawaan kamu secara normal
+            if (barTebangJual != null) barTebangJual.SetActive(!isMisi1Claimed);
+            if (barTebangPohon != null) barTebangPohon.SetActive(isJualDone && !isMisi2Claimed);
+            
+            if (barJualNisab != null) {
+                barJualNisab.SetActive(isMisi2Claimed && !isNisabMisiClaimed);
+            }
+            if (barKeKantorZakat != null) {
+                barKeKantorZakat.SetActive(isNisabMisiDone && !isZakatMisiClaimed);
+            }
         }
 
-        woodOffset = PlayerPrefs.GetInt("Saved_WoodOffset", 0);
-        if (MoneyManager.instance != null)
-        {
+        // Jalankan sisa load manager di bawahnya
+        if (MoneyManager.instance != null) {
             MoneyManager.instance.totalMoney = PlayerPrefs.GetInt("JumlahUangPemain", 0);
             MoneyManager.instance.totalEmas = PlayerPrefs.GetInt("EmasPemain", 0);
             MoneyManager.instance.totalPerak = PlayerPrefs.GetInt("Saved_PerakPemain", 0);
             MoneyManager.instance.UpdateEmasPerakUI();
         }
 
-        if (InventoryManager.instance != null)
-        {
+        if (InventoryManager.instance != null) {
             InventoryManager.instance.woodKecilCount = PlayerPrefs.GetInt("Saved_WoodKecil", 0);
             InventoryManager.instance.woodSedangCount = PlayerPrefs.GetInt("Saved_WoodSedang", 0);
             InventoryManager.instance.woodBesarCount = PlayerPrefs.GetInt("Saved_WoodBesar", 0);
@@ -291,16 +388,27 @@ public class TaskManager : MonoBehaviour {
             InventoryManager.instance.UpdateUI();
         }
 
-        if (barTebangJual != null) barTebangJual.SetActive(!isMisi1Claimed);
-        
-        // 🔥 PERBAIKAN LOAD: Bar Tebang Pohon langsung muncul jika Misi 1 SUDAH SELESAI DITEBANG/DIJUAL, tidak perlu nunggu diklaim
-        if (barTebangPohon != null) barTebangPohon.SetActive(isJualDone && !isMisi2Claimed);
-        
-        if (isMisi2Claimed && !isIsiPakanClaimed)
-        {
+       // 🎯 KUNCI LOAD GAME LEVEL 3 DI TASKMANAGER.CS
+        if (isMisi2Claimed && (Level3Manager.instance != null && Level3Manager.instance.isBabak3Aktif)) {
+            // Jika hadiah belanja belum diklaim, biarkan bar navigasi toko menyala
             if (barKeToko != null) barKeToko.SetActive(!isKeTokoClaimed);
+            
+            // Pastikan barBeliTernak ikut di-load status hidup/matinya beserta slidernya!
+            if (barBeliTernak != null) {
+                barBeliTernak.SetActive(!isKeTokoClaimed);
+                if (sliderBeliTernak != null) {
+                    sliderBeliTernak.maxValue = targetBeliHewanMisi1;
+                    sliderBeliTernak.value = beliHewanMisi1Count;
+                }
+            }
+
             if (barBeliPakan != null) barBeliPakan.SetActive(!isBeliPakanClaimed);
-            if (barIsiPakan != null) barIsiPakan.SetActive(!isIsiPakanClaimed);
+            
+            if (isKeTokoDone && isBeliPakanDone) {
+                if (barIsiPakan != null) barIsiPakan.SetActive(!isIsiPakanClaimed);
+            } else {
+                if (barIsiPakan != null) barIsiPakan.SetActive(false);
+            }
         }
     }
 
@@ -311,7 +419,10 @@ public class TaskManager : MonoBehaviour {
         PlayerPrefs.SetInt("Saved_IsMisi2Started", isMisi2Started ? 1 : 0);
         PlayerPrefs.SetInt("Saved_IsTebangDone", isTebangDone ? 1 : 0);
         PlayerPrefs.SetInt("Saved_IsMisi2Claimed", isMisi2Claimed ? 1 : 0);
-        
+        PlayerPrefs.SetInt("Saved_IsNisabMisiDone", isNisabMisiDone ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsNisabMisiClaimed", isNisabMisiClaimed ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsZakatMisiDone", isZakatMisiDone ? 1 : 0);
+        PlayerPrefs.SetInt("Saved_IsZakatMisiClaimed", isZakatMisiClaimed ? 1 : 0);
         PlayerPrefs.SetInt("Saved_IsKeTokoDone", isKeTokoDone ? 1 : 0);
         PlayerPrefs.SetInt("Saved_IsKeTokoClaimed", isKeTokoClaimed ? 1 : 0);
         PlayerPrefs.SetInt("Saved_BeliHewanCount", beliHewanMisi1Count);
@@ -320,11 +431,9 @@ public class TaskManager : MonoBehaviour {
         PlayerPrefs.SetInt("Saved_IsiPakanCount", isiPakanCount);
         PlayerPrefs.SetInt("Saved_IsIsiPakanDone", isIsiPakanDone ? 1 : 0);
         PlayerPrefs.SetInt("Saved_IsiPakanClaimed", isIsiPakanClaimed ? 1 : 0);
-        // 🔥 SIMPAN PROGRESS TAMBANG BABAK 2
         PlayerPrefs.SetInt("Saved_IsTambangLogamDone", isTambangLogamDone ? 1 : 0);
         PlayerPrefs.SetInt("Saved_IsTambangLogamClaimed", isTambangLogamClaimed ? 1 : 0);
         PlayerPrefs.SetInt("Saved_TotalLogamMinedCount", totalLogamMinedCount);
-
         PlayerPrefs.SetInt("Saved_WoodOffset", woodOffset);
 
         if (MoneyManager.instance != null)
@@ -368,7 +477,6 @@ public class TaskManager : MonoBehaviour {
             if (!sudahLevel3 && !isMisi2Claimed && InventoryManager.instance != null) {
                 UpdateTebangProgress(InventoryManager.instance.totalWoodCollected);
             }
-            // 🔥 TAMBAHAN PENGAMAN: Segarkan tampilan visual bar tambang logam saat panel dibuka
             if (barTambangLogam != null && barTambangLogam.activeSelf) {
                 UpdateTambangLogamProgress(totalLogamMinedCount);
             }
@@ -388,12 +496,10 @@ public class TaskManager : MonoBehaviour {
         if (asetBlur != null) asetBlur.SetActive(false);
     }
 
-    // 🔥 PERBAIKAN LOGIKA: Begitu kayu terjual, langsung amankan isi woodOffset & aktifkan Misi 2
     public void NotifyWoodSold() {
         if (isJualDone) return; 
         isJualDone = true;
 
-        // Kunci offset kayu di sini saat ini juga agar Misi 2 langsung menghitung sisa tebangan dengan benar
         if (InventoryManager.instance != null) {
             woodOffset = InventoryManager.instance.totalWoodCollected;
         }
@@ -426,28 +532,23 @@ public class TaskManager : MonoBehaviour {
     public void AmbilHadiahTebangJual() {
         if (isJualDone && !isMisi1Claimed) {
             isMisi1Claimed = true;
-
             PlayRewardEffects(rewardMisi1, btnAmbilTebangJual.transform);
-
-            // Penguncian woodOffset & isMisi2Started di sini dihapus karena sudah di-handle realtime di NotifyWoodSold()
-
             if (barTebangPohon != null) {
                 barTebangPohon.SetActive(true);
                 barTebangPohon.transform.SetAsFirstSibling(); 
                 UpdateTebangProgress(InventoryManager.instance.totalWoodCollected); 
             }
-
             if (MoneyManager.instance != null) MoneyManager.instance.AddMoney(rewardMisi1);
             btnAmbilTebangJual.gameObject.SetActive(false);
-            txtTebangJual.text = "Misi Selesai!";
+            if (barTebangJual != null) barTebangJual.SetActive(false);
+            SimpanProgressGameKeKomputer();
         }
     }
 
-   public void UpdateTebangProgress(int totalCount) {
+    public void UpdateTebangProgress(int totalCount) {
         if (totalCount >= 1 && PlayerPrefs.GetInt("Panel17Selesai", 0) == 0) {
             PlayerPrefs.SetInt("Panel17Selesai", 1);
             PlayerPrefs.Save();
-
             if (IntroStoryManager.instance != null) {
                 IntroStoryManager.instance.TriggerPanel17SelesaiTebang();
             }
@@ -464,17 +565,14 @@ public class TaskManager : MonoBehaviour {
             }
         }
 
-        // 🔥 PASTIKAN DI SINI: Teksnya murni "Tebang Pohon", jangan sampai ketulis Tambang!
         if (barTebangPohon != null && barTebangPohon.activeSelf) {
             if (sliderTebang != null) {
                 sliderTebang.maxValue = targetTebang;
                 sliderTebang.value = progressMisiSekarang;
             }
-
             if (txtTebang != null) {
                 txtTebang.text = "Tebang Pohon (" + progressMisiSekarang.ToString() + "/" + targetTebang.ToString() + ")";
             }
-
             if (progressMisiSekarang >= targetTebang) {
                 isTebangDone = true;
                 if (imgBtnTebangPohon != null) imgBtnTebangPohon.sprite = btnHijauAmbil;
@@ -488,15 +586,78 @@ public class TaskManager : MonoBehaviour {
     public void AmbilHadiahTebangPohon() {
         if (isTebangDone && !isMisi2Claimed) {
             isMisi2Claimed = true;
-
             PlayRewardEffects(rewardMisi2, btnAmbilTebangPohon.transform);
-
             if (MoneyManager.instance != null) {
                 MoneyManager.instance.AddMoney(rewardMisi2);
             }
             btnAmbilTebangPohon.gameObject.SetActive(false);
             txtTebang.text = "Misi Selesai!";
+            if (barTebangPohon != null) barTebangPohon.SetActive(false);
+
+            if (barJualNisab != null) {
+                barJualNisab.SetActive(true);
+                barJualNisab.transform.SetAsFirstSibling();
+                if (imgBtnJualNisab != null) imgBtnJualNisab.sprite = btnAbuAbu;
+            }
+            SimpanProgressGameKeKomputer();
         }
+    }
+
+    private void UpdateMisiNisabProgress() {
+        if (MoneyManager.instance == null || barJualNisab == null || !barJualNisab.activeSelf) return;
+
+        int uangSekarang = MoneyManager.instance.totalMoney;
+        if (uangSekarang > targetNisabUang) uangSekarang = targetNisabUang; 
+
+        if (sliderJualNisab != null) {
+            sliderJualNisab.maxValue = targetNisabUang;
+            sliderJualNisab.value = uangSekarang;
+        }
+
+        if (uangSekarang >= targetNisabUang && !isNisabMisiDone) {
+            isNisabMisiDone = true;
+            if (imgBtnJualNisab != null) imgBtnJualNisab.sprite = btnHijauAmbil;
+            if (!misiPanel.activeSelf && ikonNotifikasi != null) {
+                ikonNotifikasi.SetActive(true);
+            }
+            AktifkanMisiKeKantorZakat();
+        }
+    }
+
+    public void AmbilHadiahJualNisab() {
+        if (isNisabMisiDone && !isNisabMisiClaimed) {
+            isNisabMisiClaimed = true;
+            PlayRewardEffects(rewardMisiNisab, btnAmbilJualNisab.transform);
+            if (MoneyManager.instance != null) {
+                MoneyManager.instance.AddMoney(rewardMisiNisab);
+            }
+            btnAmbilJualNisab.gameObject.SetActive(false);
+            if (barJualNisab != null) barJualNisab.SetActive(false);
+            SimpanProgressGameKeKomputer();
+        }
+    }
+
+    private void AktifkanMisiKeKantorZakat() {
+        if (barKeKantorZakat != null && !barKeKantorZakat.activeSelf && !isZakatMisiClaimed) {
+            barKeKantorZakat.SetActive(true);
+            barKeKantorZakat.transform.SetAsFirstSibling();
+            if (txtKeKantorZakat != null) txtKeKantorZakat.text = "Pergi ke Kantor Zakat & Bayar Zakat Perdagangan";
+            if (ikonNotifikasi != null) ikonNotifikasi.SetActive(true);
+        }
+    }
+
+    public void NotifyZakatPaid() {
+        if (isZakatMisiDone) return;
+        isZakatMisiDone = true;
+        isZakatMisiClaimed = true;
+
+        if (barKeKantorZakat != null) {
+            barKeKantorZakat.SetActive(false);
+        }
+        
+        AktifkanMisiEdaranKades();
+        SimpanProgressGameKeKomputer();
+        Debug.Log("<color=green>[TaskManager]</color> Misi Zakat selesai, bar langsung di-hide & Misi Edaran Kades aktif!");
     }
 
     public void AktifkanMisiEdaranKades() {
@@ -520,7 +681,6 @@ public class TaskManager : MonoBehaviour {
                 asetBlurEdaran.SetActive(true);
                 asetBlurEdaran.transform.SetAsFirstSibling(); 
             }
-
             panelEdaranKades.SetActive(true);
             panelEdaranKades.transform.SetAsLastSibling(); 
            
@@ -542,26 +702,19 @@ public class TaskManager : MonoBehaviour {
                 yield return new WaitForSeconds(kecepatanKetik); 
             }
             edaranSedangMengetik = false; 
-            
             if (btnCloseEdaranKades != null) {
                 btnCloseEdaranKades.gameObject.SetActive(true);
             }
         }
     }
 
-    public void SkipKetikEdaran()
-    {
-        if (edaranSedangMengetik)
-        {
+    public void SkipKetikEdaran() {
+        if (edaranSedangMengetik) {
             if (typewriterCoroutine != null) StopCoroutine(typewriterCoroutine);
-
-            if (txtIsiEdaranKades != null)
-            {
+            if (txtIsiEdaranKades != null) {
                 txtIsiEdaranKades.text = teksLengkapEdaran;
             }
-
             edaranSedangMengetik = false;
-
             if (btnCloseEdaranKades != null) {
                 btnCloseEdaranKades.gameObject.SetActive(true);
             }
@@ -578,15 +731,15 @@ public class TaskManager : MonoBehaviour {
                 panelEdaranKades.SetActive(false);
             }
             if (asetBlurEdaran != null) asetBlurEdaran.SetActive(false);
-
-            if (btnBukaEdaranKades != null) {
-                btnBukaEdaranKades.gameObject.SetActive(false); 
-            }
+            if (btnBukaEdaranKades != null) btnBukaEdaranKades.gameObject.SetActive(false); 
 
             if (Level2Manager.instance != null && Level2Manager.instance.koinLevel2Container != null) {
                 Level2Manager.instance.koinLevel2Container.SetActive(true);
             }
 
+            // =====================================================================
+            // 🌟 LOGIKA DATA BACKEND UTAMA
+            // =====================================================================
             if (MoneyManager.instance != null) {
                 MoneyManager.instance.totalEmas += 5; 
                 MoneyManager.instance.UpdateEmasPerakUI(); 
@@ -596,50 +749,47 @@ public class TaskManager : MonoBehaviour {
                 Level2Manager.instance.txtEmasUtama.text = MoneyManager.instance.totalEmas + " gr";
             }
 
-            if (TokoManager.instance != null && TokoManager.instance.prefabTeksMinusAnim != null && posisiTargetEmasHUD != null)
-            {
-                if (InventoryManager.instance != null && InventoryManager.instance.audioSourceInventory != null && suaraEmasDapat != null)
-                {
+            /// =====================================================================
+            // 🌟 LAHIRKAN ANIMASI BARU KHUSUS KADES DI LUAR LAYOUT GROUP 🌟
+            // =====================================================================
+            if (prefabTeksPlusKades != null && posisiTargetEmasHUD != null) {
+                if (InventoryManager.instance != null && InventoryManager.instance.audioSourceInventory != null && suaraEmasDapat != null) {
                     InventoryManager.instance.audioSourceInventory.PlayOneShot(suaraEmasDapat);
                 }
 
-                GameObject teksPlusObj = Instantiate(TokoManager.instance.prefabTeksMinusAnim, posisiTargetEmasHUD, false);
-
-                Image targetEmasImage = posisiTargetEmasHUD.GetComponentInChildren<Image>(); 
-                Image prefabImageComponent = teksPlusObj.GetComponentInChildren<Image>(); 
-
-                if (targetEmasImage != null && prefabImageComponent != null)
-                {
-                    prefabImageComponent.sprite = targetEmasImage.sprite; 
+                // 🌟 KUNCI 1: Spawn menempel langsung pada Canvas terluar (parent dari parent-nya HUD)
+                // Ini dilakukan agar prefab bebas dari kekuasaan Horizontal Layout Group!
+                Transform rootCanvas = posisiTargetEmasHUD.parent.parent;
+                GameObject teksPlusObj = Instantiate(prefabTeksPlusKades, rootCanvas, false);
+                
+                TeksPlusKadesAnim komponenAnim = teksPlusObj.GetComponent<TeksPlusKadesAnim>();
+                if (komponenAnim != null) {
+                    komponenAnim.SetupTeksPlus("+5 gr"); 
                 }
 
-                TeksMinusAnim komponenAnim = teksPlusObj.GetComponent<TeksMinusAnim>();
-                if (komponenAnim != null)
-                {
-                    komponenAnim.SetupTeksMinus("+5 gr"); 
-                    
-                    TMP_Text komponenTeksTMP = teksPlusObj.GetComponentInChildren<TMP_Text>();
-                    if (komponenTeksTMP != null) komponenTeksTMP.color = Color.green;
-                }
-
+                // 🌟 KUNCI 2: Ambil RectTransform dan samakan posisinya secara mutlak
                 RectTransform rectAnim = teksPlusObj.GetComponent<RectTransform>();
-                if (rectAnim != null)
-                {
-                    rectAnim.anchoredPosition = Vector2.zero; 
+                if (rectAnim != null) {
+                    // Gunakan .position (World Space UI) untuk menyamakan letak secara presisi dengan ikon emas HUD
+                    rectAnim.position = posisiTargetEmasHUD.position;
+                    
+                    // Karena sudah bebas dari layout group, jika kamu ingin menggesernya sedikit ke kiri 
+                    // atau ke bawah agar tidak menumpuk pas di atas teks angka, tinggal mainkan offset kecil ini:
+                    rectAnim.anchoredPosition = new Vector2(rectAnim.anchoredPosition.x - 40f, rectAnim.anchoredPosition.y - 10f);
                 }
-                teksPlusObj.transform.SetParent(posisiTargetEmasHUD.parent, true); 
+                
                 teksPlusObj.transform.SetAsLastSibling(); 
             }
-            // 🔥 AKTIFKAN MISI TAMBANG EMAS/PERAK
-            PlayerPrefs.SetInt("Saved_EdaranSelesai", 1); // Tandai edaran kades clear
+            
+            PlayerPrefs.SetInt("Saved_EdaranSelesai", 1); 
             PlayerPrefs.Save();
 
-            if (barEdaranKades != null) barEdaranKades.SetActive(false); // Hilangkan bar edaran
-
+            if (barEdaranKades != null) barEdaranKades.SetActive(false); 
+            
+            if (barKeTambang != null) barKeTambang.SetActive(true);
             if (barTambangLogam != null) {
                 barTambangLogam.SetActive(true);
-                barTambangLogam.transform.SetAsFirstSibling();
-                UpdateTambangLogamProgress(totalLogamMinedCount); // Set tulisan (0/15) awal
+                UpdateTambangLogamProgress(totalLogamMinedCount); 
             }
 
             if (ikonNotifikasi != null && !misiPanel.activeSelf) {
@@ -648,32 +798,45 @@ public class TaskManager : MonoBehaviour {
         }
     }
 
-    public void MulaiMisiBabak3()
-    {
+    public void MulaiMisiBabak3() {
+        // 🔒 PAKSA MATIKAN: Semua bar dari babak 1 dan babak 2 termasuk Kantor Zakat lama!
         if (barTebangJual != null) barTebangJual.SetActive(false);
         if (barTebangPohon != null) barTebangPohon.SetActive(false);
         if (barEdaranKades != null) barEdaranKades.SetActive(false);
+        if (barTambangLogam != null) barTambangLogam.SetActive(false);
+        if (barKeKantorZakat != null) barKeKantorZakat.SetActive(false); // 🌟 TAMBAHKAN BARIS INI
 
-        if (barKeToko != null) barKeToko.SetActive(true);
+        // 1. Aktifkan Bar Navigasi "Pergi Ke Toko"
+        if (barKeToko != null) {
+            barKeToko.SetActive(true);
+            barKeToko.transform.SetAsFirstSibling();
+        }
+
+        // 2. Aktifkan Bar Misi Progress "Beli Hewan Ternak (0/3)"
+        if (barBeliTernak != null) {
+            barBeliTernak.SetActive(true);
+        }
+
+        // 3. Aktifkan Bar Misi "Beli Pakan"
         if (barBeliPakan != null) barBeliPakan.SetActive(true);
-        if (barIsiPakan != null) barIsiPakan.SetActive(true);
-
-        if (barKeToko != null) barKeToko.transform.SetAsLastSibling();
-        if (barBeliPakan != null) barBeliPakan.transform.SetAsLastSibling();
-        if (barIsiPakan != null) barIsiPakan.transform.SetAsLastSibling();
 
         beliHewanMisi1Count = 0; 
+        if (sliderBeliTernak != null) {
+            sliderBeliTernak.maxValue = targetBeliHewanMisi1;
+            sliderBeliTernak.value = beliHewanMisi1Count;
+        }
+
+        // Sesuaikan teks dan tombol ambil masing-masing bar
         if (btnAmbilKeToko != null) btnAmbilKeToko.gameObject.SetActive(true); 
         if (imgBtnKeToko != null) imgBtnKeToko.sprite = btnAbuAbu; 
-        if (txtKeToko != null) txtKeToko.text = $"Pergi ke toko & beli hewan ternak ({beliHewanMisi1Count}/{targetBeliHewanMisi1})";
+        if (txtKeToko != null) txtKeToko.text = $"Beli hewan ternak ({beliHewanMisi1Count}/{targetBeliHewanMisi1})";
 
         if (btnAmbilBeliPakan != null) btnAmbilBeliPakan.gameObject.SetActive(true);
         if (imgBtnBeliPakan != null) imgBtnBeliPakan.sprite = btnAbuAbu;
         if (txtBeliPakan != null) txtBeliPakan.text = "Beli pakan di toko";
 
-        if (btnAmbilIsiPakan != null) btnAmbilIsiPakan.gameObject.SetActive(true);
-        if (imgBtnIsiPakan != null) imgBtnIsiPakan.sprite = btnAbuAbu;
-        if (txtIsiPakan != null) txtIsiPakan.text = "Isi Pakan Hewan di peternakan";
+        if (barIsiPakan != null) barIsiPakan.SetActive(false);
+        if (barKeIsiPakan != null) barKeIsiPakan.SetActive(false);
         isiPakanCount = 0;
 
         if (ikonNotifikasi != null && !misiPanel.activeSelf) {
@@ -681,120 +844,119 @@ public class TaskManager : MonoBehaviour {
         }
     }
 
-    public void KlaimRewardKeToko()
-    {
+    // 🌟 SEKARANG NAMANYA SUDAH SINKRON SESUAI LAPORANMU KESAYANGAN 🌟
+    public void KlaimRewardBeliTernak() {
         if (!isKeTokoDone) return; 
-
-        if (isKeTokoDone && !isKeTokoClaimed) 
-        {
+        if (isKeTokoDone && !isKeTokoClaimed) {
             isKeTokoClaimed = true; 
-
             PlayRewardEffects(rewardKeToko, btnAmbilKeToko.transform);
-
             if (MoneyManager.instance != null) MoneyManager.instance.AddMoney(rewardKeToko); 
-            if (barKeToko != null) barKeToko.SetActive(false); 
             
-            CekSemuaMisiBabak3Selesai();
+            // Matikan bar navigasi "Pergi ke Toko" dan bar progress "Beli Hewan Ternak" sekaligus!
+            if (barKeToko != null) barKeToko.SetActive(false); 
+            if (barBeliTernak != null) barBeliTernak.SetActive(false); 
+            
+            CekDanAktifkanMisiIsiPakanAkhir();
         }
     }
 
-    // 🔥 PERBAIKAN LOGIKA: Hapus syarat 'isKeTokoClaimed' agar misi beli pakan bisa dicicil langsung
-    public void NotifyBeliPakan()
-    {
-        if (!isBeliPakanDone)
-        {
+    public void NotifyBeliPakan() {
+        if (!isBeliPakanDone) {
             isBeliPakanDone = true;
-            if (txtBeliPakan != null) txtBeliPakan.text = "Selesai membeli paket pakan!";
-            
+            // ✂️ TULISAN SELESAI DI SINI SUDAH DIHAPUS
             if (imgBtnBeliPakan != null) imgBtnBeliPakan.sprite = btnHijauAmbil; 
             if (ikonNotifikasi != null && !misiPanel.activeSelf) ikonNotifikasi.SetActive(true);
+
+            // ✂️ PEMANGGILAN OTOMATIS DI SINI SUDAH DIHAPUS KARENA HARUS TUNGGU KLAIM REWARD
         }
     }
 
-    public void NotifyHewanDibeli()
-    {
-        if (!isKeTokoDone && barKeToko != null && barKeToko.activeSelf)
-        {
+    // 🌟 PERBARUI FUNGSI INI DI TASKMANAGER.CS 🌟
+    public void NotifyHewanDibeli() {
+        if (!isKeTokoDone && barBeliTernak != null && barBeliTernak.activeSelf) {
             beliHewanMisi1Count++;
             if (beliHewanMisi1Count > targetBeliHewanMisi1) beliHewanMisi1Count = targetBeliHewanMisi1;
-
-            if (txtKeToko != null) txtKeToko.text = $"Pergi ke toko & beli hewan ternak ({beliHewanMisi1Count}/{targetBeliHewanMisi1})";
             
-            if (beliHewanMisi1Count >= targetBeliHewanMisi1)
-            {
+            if (sliderBeliTernak != null) {
+                sliderBeliTernak.value = beliHewanMisi1Count;
+            }
+
+            if (txtKeToko != null) txtKeToko.text = $"Beli hewan ternak ({beliHewanMisi1Count}/{targetBeliHewanMisi1})";
+            
+            if (beliHewanMisi1Count >= targetBeliHewanMisi1) {
                 isKeTokoDone = true;
-                if (txtKeToko != null) txtKeToko.text = "Selesai pergi ke toko & beli hewan ternak!";
+                // ✂️ TULISAN SELESAI DI SINI SUDAH DIHAPUS, TEKS TETAP (3/3)
                 if (imgBtnKeToko != null) imgBtnKeToko.sprite = btnHijauAmbil; 
-                
                 if (ikonNotifikasi != null && !misiPanel.activeSelf) ikonNotifikasi.SetActive(true);
+                
+                // ✂️ PEMANGGILAN OTOMATIS DI SINI SUDAH DIHAPUS KARENA HARUS TUNGGU KLAIM REWARD
             }
         }
     }
-
-    // 🔥 PERBAIKAN LOGIKA: Hapus syarat 'isKeTokoClaimed' agar misi pengisian pakan 3D bisa mendata kemajuan secara realtime
-    public void NotifyIsiPakanWorld3D()
-    {
-        if (!isIsiPakanDone)
-        {
+    public void NotifyIsiPakanWorld3D() {
+        if (!isIsiPakanDone) {
             isiPakanCount++;
             if (isiPakanCount > targetIsiPakan) isiPakanCount = targetIsiPakan;
-
             if (txtIsiPakan != null) txtIsiPakan.text = $"Mengisi pakan hewan ({isiPakanCount}/{targetIsiPakan})";
 
-            if (isiPakanCount >= targetIsiPakan)
-            {
+            if (isiPakanCount >= targetIsiPakan) {
                 isIsiPakanDone = true;
                 if (txtIsiPakan != null) txtIsiPakan.text = "Selesai mengisi pakan hewan!";
-                
                 if (imgBtnIsiPakan != null) imgBtnIsiPakan.sprite = btnHijauAmbil; 
                 if (ikonNotifikasi != null && !misiPanel.activeSelf) ikonNotifikasi.SetActive(true);
             }
         }
     }
 
-    public void KlaimRewardBeliPakan()
-    {
+    public void KlaimRewardBeliPakan() {
         if (!isBeliPakanDone) return;
-
-        if (isBeliPakanDone && !isBeliPakanClaimed)
-        {
+        if (isBeliPakanDone && !isBeliPakanClaimed) {
             isBeliPakanClaimed = true;
-
             PlayRewardEffects(rewardBeliPakan, btnAmbilBeliPakan.transform);
-
             if (MoneyManager.instance != null) MoneyManager.instance.AddMoney(rewardBeliPakan);
             if (barBeliPakan != null) barBeliPakan.SetActive(false); 
-            CekSemuaMisiBabak3Selesai();
+            
+            CekDanAktifkanMisiIsiPakanAkhir();
         }
     }
 
-    public void KlaimRewardIsiPakan()
-    {
+    // Fungsi baru untuk menyalakan misi isi pakan dan navigasinya secara serentak
+    private void CekDanAktifkanMisiIsiPakanAkhir() {
+        // Logika ini memastikan KEDUA reward (Beli Ternak & Beli Pakan) wajib di-klaim dulu!
+        if (isKeTokoClaimed && isBeliPakanClaimed) {
+            // 1. Munculkan bar navigasi "Pergi ke Tempat Isi Pakan" terlebih dahulu
+            if (barKeIsiPakan != null) {
+                barKeIsiPakan.SetActive(true);
+                barKeIsiPakan.transform.SetAsFirstSibling(); // 🌟 DORONG KE POSISI PALING ATAS
+            }
+
+            // 2. Munculkan bar progress "Isi Pakan Ternak (0/6)" tepat di bawahnya sebagai satu kesatuan
+            if (barIsiPakan != null && !isIsiPakanClaimed) {
+                barIsiPakan.SetActive(true);
+                // Biarkan barIsiPakan mengikuti urutan Layout Group otomatis di bawah navigasinya
+            }
+
+            if (ikonNotifikasi != null && !misiPanel.activeSelf) ikonNotifikasi.SetActive(true);
+        }
+    }
+
+    public void KlaimRewardIsiPakan() {
         if (!isIsiPakanDone) return;
-
-        if (isIsiPakanDone && !isIsiPakanClaimed)
-        {
+        if (isIsiPakanDone && !isIsiPakanClaimed) {
             isIsiPakanClaimed = true;
-
             PlayRewardEffects(rewardIsiPakan, btnAmbilIsiPakan.transform);
-
             if (MoneyManager.instance != null) MoneyManager.instance.AddMoney(rewardIsiPakan);
             if (barIsiPakan != null) barIsiPakan.SetActive(false); 
             CekSemuaMisiBabak3Selesai();
         }
     }
 
-    private void PlayRewardEffects(int rewardAmount, Transform buttonTransform)
-    {
-        if (InventoryManager.instance != null)
-        {
+    private void PlayRewardEffects(int rewardAmount, Transform buttonTransform) {
+        if (InventoryManager.instance != null) {
             InventoryManager.instance.Invoke("SpawnUICoin", 0f); 
-            
-            if (InventoryManager.instance.uiCoinPrefab != null && InventoryManager.instance.navCoinTarget != null)
-            {
+            if (InventoryManager.instance.uiCoinPrefab != null && InventoryManager.instance.navCoinTarget != null) {
                 int jumlahKoin = 5;
-                for (int i = 0; i < jumlahKoin; i++)
-                {
+                for (int i = 0; i < jumlahKoin; i++) {
                     GameObject coin = Instantiate(InventoryManager.instance.uiCoinPrefab, misiPanel.transform.parent);
                     coin.transform.SetAsLastSibling();
                     coin.transform.position = buttonTransform.position; 
@@ -806,70 +968,123 @@ public class TaskManager : MonoBehaviour {
                     effect.Init(InventoryManager.instance.navCoinTarget, nilaiPerKoin);
                 }
             }
-
-            if (InventoryManager.instance.audioSourceInventory != null && InventoryManager.instance.suaraJualKoin != null)
-            {
+            if (InventoryManager.instance.audioSourceInventory != null && InventoryManager.instance.suaraJualKoin != null) {
                 InventoryManager.instance.audioSourceInventory.PlayOneShot(InventoryManager.instance.suaraJualKoin);
             }
         }
     }
 
-    private void CekSemuaMisiBabak3Selesai()
-    {
-        if (isBeliPakanClaimed && isIsiPakanClaimed)
-        {
+    private void CekSemuaMisiBabak3Selesai() {
+        if (isBeliPakanClaimed && isIsiPakanClaimed) {
             Debug.Log("<color=cyan>[Task Manager]</color> Babak 3 SELESAI MUTLAK!");
         }
     }
 
-    // 🔥 FUNGSI BARU: Mengupdate hitungan nambang (0/15) secara real-time
-    // 🔥 FUNGSI BARU: Mengupdate hitungan nambang (0/15) secara real-time
     public void UpdateTambangLogamProgress(int totalCount) {
         if (isTambangLogamClaimed) return;
-
-        // KUNCI: Data harus selalu diupdate dan disimpan di background terlebih dahulu!
         totalLogamMinedCount = totalCount;
         PlayerPrefs.SetInt("Saved_TotalLogamMinedCount", totalLogamMinedCount);
         PlayerPrefs.Save();
 
-        // Logika evaluasi status misi selesai (pindahkan ke luar pengecekan bar UI)
         if (totalLogamMinedCount >= targetTambangLogam) {
             isTambangLogamDone = true;
             if (imgBtnTambangLogam != null) imgBtnTambangLogam.sprite = btnHijauAmbil;
             if (!misiPanel.activeSelf && ikonNotifikasi != null) {
                 ikonNotifikasi.SetActive(true);
             }
+            CekPemicuZakatEmasPerak();
         }
 
-        // 🔥 Hanya urusan visual teks dan slider yang dimasukkan ke dalam gerbang activeSelf
         if (barTambangLogam != null && barTambangLogam.activeSelf) {
             if (sliderTambangLogam != null) {
                 sliderTambangLogam.maxValue = targetTambangLogam;
                 sliderTambangLogam.value = totalLogamMinedCount;
             }
-
             if (txtTambangLogam != null) {
                 txtTambangLogam.text = "Tambang Emas/Perak (" + totalLogamMinedCount.ToString() + "/" + targetTambangLogam.ToString() + ")";
             }
         }
     }
 
-    // 🔥 FUNGSI BARU: Dipasang ke Button 'btnAmbilTambangLogam' di Inspector
+    public void CekPemicuZakatEmasPerak() {
+        if (isTambangLogamDone && JurnalManager.instance != null && JurnalManager.instance.IsEmasPerakUnlocked()) {
+            if (barKeKantorZakat != null && !barKeKantorZakat.activeSelf) {
+                barKeKantorZakat.SetActive(true);
+                barKeKantorZakat.transform.SetAsFirstSibling();
+                if (txtKeKantorZakat != null) {
+                    txtKeKantorZakat.text = "Pergi ke Kantor Zakat & Bayar Zakat Emas/Perak";
+                }
+                if (ikonNotifikasi != null) ikonNotifikasi.SetActive(true);
+            }
+        }
+    }
+
+    public void CekPemicuZakatTernak() {
+        if (isIsiPakanDone && JurnalManager.instance != null && JurnalManager.instance.IsPeternakanUnlocked()) {
+            if (barKeKantorZakat != null && !barKeKantorZakat.activeSelf) {
+                barKeKantorZakat.SetActive(true);
+                barKeKantorZakat.transform.SetAsFirstSibling();
+                if (txtKeKantorZakat != null) {
+                    txtKeKantorZakat.text = "Pergi ke Kantor Zakat & Bayar Zakat Hewan Ternak";
+                }
+                if (ikonNotifikasi != null) ikonNotifikasi.SetActive(true);
+            }
+        }
+    }
+
     public void AmbilHadiahTambangLogam() {
         if (isTambangLogamDone && !isTambangLogamClaimed) {
             isTambangLogamClaimed = true;
-
             PlayRewardEffects(rewardTambangLogam, btnAmbilTambangLogam.transform);
-
             if (MoneyManager.instance != null) {
                 MoneyManager.instance.AddMoney(rewardTambangLogam);
             }
-
             btnAmbilTambangLogam.gameObject.SetActive(false);
-            if (txtTambangLogam != null) txtTambangLogam.text = "Misi Selesai!";
-            
             if (barTambangLogam != null) barTambangLogam.SetActive(false);
             SimpanProgressGameKeKomputer();
+        }
+    }
+
+    // Fungsi Master Tunggal untuk Semua Jenis Tombol "Pergi" di Game Kamu
+    public void FungsiMasterTombolPergi(string jenisLokasi)
+    {
+        // 1. Tutup panel misi lewat UIManager agar Gameplay-HUB bangun kembali
+        if (misiPanel != null) {
+            if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(misiPanel); 
+            else misiPanel.SetActive(false);
+        }
+        if (asetBlur != null) asetBlur.SetActive(false);
+
+        if (InventoryManager.instance != null && InventoryManager.instance.audioSourceInventory != null && suaraTutupMisi != null) {
+            InventoryManager.instance.audioSourceInventory.PlayOneShot(suaraTutupMisi);
+        }
+
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        Transform targetTerpilih = null;
+
+        // 2. Filter target 3D Cube dan nyalakan areanya berdasarkan parameter tombol
+        if (jenisLokasi == "Zakat") {
+            targetTerpilih = lokasiZakatCube;
+        } 
+        else if (jenisLokasi == "Tambang") {
+            targetTerpilih = lokasiTambangCube;
+        } 
+        else if (jenisLokasi == "Toko") {
+            targetTerpilih = lokasiTokoCube;
+        } 
+        else if (jenisLokasi == "IsiPakan") {
+            targetTerpilih = lokasiIsiPakanCube;
+        }
+
+        // 3. Nyalakan objek tabung/cube tujuan di map biar kelihatan gradasinya
+        if (targetTerpilih != null) {
+            targetTerpilih.gameObject.SetActive(true);
+        }
+
+        // 4. Perintahkan panah 3D HUD untuk mengunci dan mengejar target tersebut secara interaktif
+        if (ui3DArrowScript != null && targetTerpilih != null && player != null) {
+            if (rawImageHUDArrow != null) rawImageHUDArrow.SetActive(true);
+            ui3DArrowScript.SetTarget(targetTerpilih, player.transform);
         }
     }
 }

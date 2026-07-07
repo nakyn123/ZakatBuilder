@@ -41,13 +41,11 @@ public class ZakatPanelManager : MonoBehaviour
     public bool isEmasPerakUnlocked = false;
     public bool isPeternakanUnlocked = false;
 
-    // 🔥 TAMBAHAN BARU: Status tracker apakah zakat sudah pernah diselesaikan/diisi
     [Header("Status Completion")]
     public bool isPerdaganganCompleted = false;
     public bool isEmasPerakCompleted = false;
     public bool isPeternakanCompleted = false;
 
-    // 🔥 TAMBAHAN BARU: Tarik Game Object Image Centang dari Inspector Unity ke sini
     [Header("UI Centang / Checkmark Objects")]
     public GameObject checkmarkPerdagangan;
     public GameObject checkmarkEmasPerak;
@@ -60,6 +58,11 @@ public class ZakatPanelManager : MonoBehaviour
 
     [Header("External")]
     public JurnalManager jurnalManager;
+
+    [Header("Panel Kuis References")]
+    public GameObject panelKuisPerdagangan;
+    public GameObject panelKuisEmasPerak;
+    public GameObject panelKuisPeternakan;
     
     private bool isMoving = false;
     private RectTransform[] items;
@@ -82,6 +85,11 @@ public class ZakatPanelManager : MonoBehaviour
             btnClose.onClick.RemoveAllListeners(); 
             btnClose.onClick.AddListener(CloseZakatPanel); 
         }
+
+        // 🌟 CATATAN CAROUSEL: 
+        // Untuk benar-benar mematikan pergeseran manual via swipe/drag layar,
+        // Pastikan komponen 'Scroll Rect' yang menempel pada objek UI Carousel ini 
+        // di-uncheck atau dimatikan properti "Horizontal"-nya di Inspector Unity!
     }
 
     public void OpenZakatPanel()
@@ -101,7 +109,7 @@ public class ZakatPanelManager : MonoBehaviour
         UpdateTargetPosition(true);
         UpdateNavButtons();
         UpdatePaymentButtonVisual(); 
-        UpdateCheckmarkVisuals(); // 🔥 Sinkronisasi tanda centang saat dibuka
+        UpdateCheckmarkVisuals(); 
     }
 
     public void CloseZakatPanel()
@@ -199,9 +207,6 @@ public class ZakatPanelManager : MonoBehaviour
         HandleScaling();
     }
 
-    // =================================================================
-    // 🔥 PERBAIKAN LOGIKA WARNA (GELAP JIKA KUNCI / SUDAH SELESAI)
-    // =================================================================
     void HandleScaling()
     {
         if (viewPort == null || items == null) return;
@@ -226,25 +231,21 @@ public class ZakatPanelManager : MonoBehaviour
             {
                 Color baseColor = Color.white;
 
-                // Cek status masing-masing halaman carousel
                 if (i == indexPerdagangan)
                 {
                     bool unlocked = (jurnalManager != null ? jurnalManager.IsPerdaganganUnlocked() : isPerdaganganUnlocked);
-                    // 🔥 MODIFIKASI: Jika terkunci ATAU sudah komplit, buat warnanya hitam/gelap
                     if (!unlocked || isPerdaganganCompleted) baseColor = new Color(0.2f, 0.2f, 0.2f, 1f);
                     else baseColor = Color.white;
                 }
                 else if (i == indexEmasPerak)
                 {
                     bool unlocked = (jurnalManager != null && jurnalManager.IsEmasPerakUnlocked());
-                    // 🔥 MODIFIKASI: Jika terkunci ATAU sudah komplit, buat warnanya hitam/gelap
                     if (!unlocked || isEmasPerakCompleted) baseColor = new Color(0.2f, 0.2f, 0.2f, 1f);
                     else baseColor = Color.white;
                 }
                 else if (i == indexPeternakan)
                 {
                     bool unlocked = (jurnalManager != null && jurnalManager.IsPeternakanUnlocked());
-                    // 🔥 MODIFIKASI: Jika terkunci ATAU sudah komplit, buat warnanya hitam/gelap
                     if (!unlocked || isPeternakanCompleted) baseColor = new Color(0.2f, 0.2f, 0.2f, 1f);
                     else baseColor = Color.white;
                 }
@@ -263,7 +264,6 @@ public class ZakatPanelManager : MonoBehaviour
         if (checkmarkEmasPerak != null) checkmarkEmasPerak.SetActive(isEmasPerakCompleted);
         if (checkmarkPeternakan != null) checkmarkPeternakan.SetActive(isPeternakanCompleted);
 
-        // Paksa sistem untuk langsung merubah warna panel (menghitam/terang) saat ini juga
         HandleScaling(); 
     }
 
@@ -295,11 +295,12 @@ public class ZakatPanelManager : MonoBehaviour
 
         if (objRenderer != null)
         {
-            // Tombol 3D menyala putih HANYA jika sudah unlocked DAN belum dikerjakan (belum completed)
             objRenderer.material.color = (currentUnlocked && !currentCompleted) ? Color.white : new Color(0.3f, 0.3f, 0.3f, 1f);
         }
     }
 
+    // 🌟 PERBAIKAN LOCK UTAMA SAAT KLIK JIKA STATUS TERPENUHI (COMPLETED)
+    // 🔍 PERBAIKAN LOCK UTAMA SAAT KLIK JIKA STATUS TERPENUHI (COMPLETED)
     public void TriggerZakatAction()
     {
         bool currentUnlocked = false;
@@ -321,16 +322,30 @@ public class ZakatPanelManager : MonoBehaviour
             currentCompleted = isPeternakanCompleted;
         }
 
-        // 🔥 MODIFIKASI: Kunci akses jika sudah pernah diselesaikan
+        // 🔒 KUNCI TOTAL: Jika statusnya sudah terpenuhi (pernah dilalui), 
+        // tutup panel ZakatPanelManager dan paksa keluar!
         if (currentCompleted)
         {
-            Debug.Log("[ZakatPanel] Kamu sudah menunaikan zakat ini!");
-            return;
+            Debug.Log("[ZakatPanel] Kamu sudah menunaikan zakat ini! Menutup panel utama.");
+            CloseZakatPanel(); // <-- Tambahkan ini agar panel otomatis menutup kembali semacam tombol cancel
+            return; 
         }
 
+        // 🔓 PEMBUKAAN PANEL JALUR SATU PINTU (Hanya terbuka jika unlocked DAN belum completed)
         if (currentUnlocked)
         {
-            if (currentIndex == indexPerdagangan) Debug.Log("[ZakatPanel] Membuka Panel Zakat Perdagangan...");
+            if (currentIndex == indexPerdagangan && panelKuisPerdagangan != null) 
+            {
+                panelKuisPerdagangan.SetActive(true);
+            }
+            else if (currentIndex == indexEmasPerak && panelKuisEmasPerak != null) 
+            {
+                panelKuisEmasPerak.SetActive(true);
+            }
+            else if (currentIndex == indexPeternakan && panelKuisPeternakan != null) 
+            {
+                panelKuisPeternakan.SetActive(true);
+            }
         }
         else
         {

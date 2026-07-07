@@ -12,6 +12,8 @@ public class TreeSimple : MonoBehaviour {
     [Header("UI Settings")]
     public GameObject globalChopGroup; 
     public Sprite[] slotSprites;
+    public GameObject globalNoChopGroup;
+    public GameObject globalNoChopLevel2Group;
 
     [Header("Visual Models")]
     public GameObject[] treeModels; 
@@ -43,6 +45,11 @@ public class TreeSimple : MonoBehaviour {
             globalChopGroup.SetActive(false); 
         }
 
+        if (globalNoChopGroup != null) {
+            globalNoChopGroup.SetActive(false);
+        }
+        if (globalNoChopLevel2Group != null) globalNoChopLevel2Group.SetActive(false);
+
         foreach (GameObject model in treeModels) {
             if (model != null) {
                 originalScales[model] = model.transform.localScale;
@@ -55,26 +62,94 @@ public class TreeSimple : MonoBehaviour {
     void OnTriggerEnter(Collider other) {
         if (isDestroyed) return;
         if (other.CompareTag("Player")) {
-            if (globalChopGroup != null) {
-                globalChopGroup.SetActive(true); 
-                UpdateLogo();
-                globalButton.onClick.RemoveAllListeners(); 
-                globalButton.onClick.AddListener(ActionPotong);
+            
+            // 1. CEK APAKAH SEKARANG SEDANG DI LEVEL 2
+            bool isLevel2 = false;
+            if (Level2Manager.instance != null && Level2Manager.instance.environmentLevel2 != null) {
+                isLevel2 = Level2Manager.instance.environmentLevel2.activeSelf; 
+            }
+
+            // 2. CEK APAKAH SEKARANG SEDANG DI LEVEL 3
+            bool isLevel3 = false;
+            if (Level3Manager.instance != null && Level3Manager.instance.environmentLevel3 != null) {
+                isLevel3 = Level3Manager.instance.environmentLevel3.activeSelf;
+            }
+
+            if (isLevel2) {
+                // HANYA DI LEVEL 2: Matikan ChopButton & matikan NoChop Lvl 1, HIDUPKAN teks-tebang-lvl2
+                if (globalChopGroup != null) globalChopGroup.SetActive(false);
+                if (globalNoChopGroup != null) globalNoChopGroup.SetActive(false);
+                if (globalNoChopLevel2Group != null) globalNoChopLevel2Group.SetActive(true);
+            }
+            else if (isLevel3) {
+                // 🌟 LOGIKA BARU HANYA DI LEVEL 3 🌟
+                if (globalNoChopLevel2Group != null) globalNoChopLevel2Group.SetActive(false);
+
+                // Periksa apakah peternakan sudah memasuki masa Wajib Zakat di buku jurnal
+                bool sudahWajibZakatTernak = false;
+                if (JurnalManager.instance != null) {
+                    sudahWajibZakatTernak = JurnalManager.instance.isTernakNisabReached && JurnalManager.instance.isTernakHaulComplete;
+                }
+
+                if (sudahWajibZakatTernak) {
+                    // Jika sudah wajib zakat ternak, KUNCI POHON! Munculkan peringatan NoChop Level 1 (atau modifikasi teksnya jika perlu)
+                    if (globalChopGroup != null) globalChopGroup.SetActive(false);
+                    if (globalNoChopGroup != null) globalNoChopGroup.SetActive(true); 
+                }
+                else {
+                    // Selama belum wajib zakat ternak, pohon BEBAS DI-TEBANG kembali seperti biasa!
+                    if (globalNoChopGroup != null) globalNoChopGroup.SetActive(false);
+                    if (globalChopGroup != null) {
+                        globalChopGroup.SetActive(true);
+                        UpdateLogo();
+                        globalButton.onClick.RemoveAllListeners();
+                        globalButton.onClick.AddListener(ActionPotong);
+                    }
+                }
+            }
+            else {
+                // JIKA MASIH DI LEVEL 1 (Logika lamamu tetap aman berjalan di sini)
+                if (globalNoChopLevel2Group != null) globalNoChopLevel2Group.SetActive(false);
+
+                bool sudahNisabLevel1 = false;
+                if (TaskManager.instance != null) {
+                    sudahNisabLevel1 = (bool)System.Type.GetType("TaskManager").GetField("isNisabMisiDone", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(TaskManager.instance);
+                }
+
+                if (sudahNisabLevel1) {
+                    if (globalChopGroup != null) globalChopGroup.SetActive(false);
+                    if (globalNoChopGroup != null) globalNoChopGroup.SetActive(true);
+                } 
+                else {
+                    if (globalNoChopGroup != null) globalNoChopGroup.SetActive(false);
+                    if (globalChopGroup != null) {
+                        globalChopGroup.SetActive(true);
+                        UpdateLogo();
+                        globalButton.onClick.RemoveAllListeners();
+                        globalButton.onClick.AddListener(ActionPotong);
+                    }
+                }
             }
         }
     }
 
     void OnTriggerExit(Collider other) {
         if (other.CompareTag("Player")) {
-            // 🔥 Hentikan animasi harvest secara paksa jika player kabur sebelum pohon habis
             PlayerMovement moveScript = other.GetComponent<PlayerMovement>();
             if (moveScript != null) {
                 moveScript.StopHarvesting();
             }
 
+            // 🔥 Bersihkan dan matikan seluruh UI Group saat menjauhi area pohon
             if (globalChopGroup != null) {
                 globalButton.onClick.RemoveAllListeners();
                 globalChopGroup.SetActive(false); 
+            }
+            if (globalNoChopGroup != null) {
+                globalNoChopGroup.SetActive(false);
+            }
+            if (globalNoChopLevel2Group != null) {
+                globalNoChopLevel2Group.SetActive(false);
             }
         }
     }
@@ -90,11 +165,11 @@ public class TreeSimple : MonoBehaviour {
         if (player != null) {
             PlayerMovement moveScript = player.GetComponent<PlayerMovement>();
             if (moveScript != null) {
-                // 🔥 PERBAIKAN: Selalu nyalakan status harvesting setiap tombol diklik (Bukan cuma pas hitCount == 0)
                 moveScript.StartHarvesting(); 
+                
+                // 🌟 KUNCI: Kunci pergerakan player begitu aktivitas menebang dimulai
+                moveScript.isLockedInAction = true; 
 
-                // 🔥 KUNCI UTAMA: Paksa animator memutar ulang animasi tebang pohon dari frame 0 di SETIAP KLIK
-                // Pastikan "Tebang" di bawah ini diganti dengan nama kotak State Animasi menebangmu di Animator Controller!
                 if (moveScript.anim != null) {
                     moveScript.anim.Play("Tebang", 0, 0f); 
                 }
@@ -123,6 +198,37 @@ public class TreeSimple : MonoBehaviour {
         } else {
             Tumbang();
         }
+    }
+
+    void Tumbang() {
+        isDestroyed = true; 
+        if(globalChopGroup != null) globalChopGroup.SetActive(false);
+        
+        // 🌟 KUNCI: Lepas kunci pergerakan player SEGERA saat klik terakhir (pohon tumbang)
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null) {
+            PlayerMovement moveScript = player.GetComponent<PlayerMovement>();
+            if (moveScript != null) {
+                moveScript.isLockedInAction = false; // Player bisa jalan lagi!
+                moveScript.StopHarvesting();        // Matikan animasi & kapak langsung
+            }
+        }
+
+        GameObject modelTerakhir = treeModels[hitCount];
+        if (modelTerakhir != null) {
+            Vector3 centerPos = GetCenterPosition(modelTerakhir);
+            LeanTween.scale(modelTerakhir, Vector3.zero, 0.3f).setEaseInBack().setOnComplete(() => {
+                modelTerakhir.SetActive(false);
+            });
+            SpawnCoins(centerPos); 
+        }
+
+        if (InventoryManager.instance != null && TaskManager.instance != null) {
+            int estimasiTotalKayu = InventoryManager.instance.totalWoodCollected + 1;
+            TaskManager.instance.UpdateTebangProgress(estimasiTotalKayu);
+        }
+
+        StartCoroutine(RespawnRoutine());
     }
 
     Vector3 GetCenterPosition(GameObject model) {
@@ -161,29 +267,6 @@ public class TreeSimple : MonoBehaviour {
             int index = Mathf.Clamp(hitCount, 0, slotSprites.Length - 1);
             buttonImage.sprite = slotSprites[index];
         }
-    }
-
-    void Tumbang() {
-        isDestroyed = true; 
-        if(globalChopGroup != null) globalChopGroup.SetActive(false);
-        
-        GameObject modelTerakhir = treeModels[hitCount];
-        if (modelTerakhir != null) {
-            Vector3 centerPos = GetCenterPosition(modelTerakhir);
-            LeanTween.scale(modelTerakhir, Vector3.zero, 0.3f).setEaseInBack().setOnComplete(() => {
-                modelTerakhir.SetActive(false);
-            });
-            SpawnCoins(centerPos); 
-        }
-
-        // 🔥 TAMBAHAN BARU: Laporkan tebangan secara real-time ke TaskManager begitu pohon tumbang!
-        if (InventoryManager.instance != null && TaskManager.instance != null) {
-            // Kita tambah 1 karena di frame ini Inventory mungkin baru akan bertambah dari koin magnet
-            int estimasiTotalKayu = InventoryManager.instance.totalWoodCollected + 1;
-            TaskManager.instance.UpdateTebangProgress(estimasiTotalKayu);
-        }
-
-        StartCoroutine(RespawnRoutine());
     }
 
     IEnumerator RespawnRoutine() {

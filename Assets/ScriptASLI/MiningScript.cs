@@ -89,10 +89,11 @@ public class MiningScript : MonoBehaviour {
         if (player != null) {
             PlayerMovement moveScript = player.GetComponent<PlayerMovement>();
             if (moveScript != null) {
-                // 🔥 PERBAIKAN: Selalu pastikan status Mining aktif di setiap klik, bukan cuma pas hitCount == 0
                 moveScript.StartMining(); 
 
-                // Paksa animator memutar ulang animasi nambang dari frame 0
+                // 🌟 KUNCI: Kunci pergerakan player begitu aktivitas menambang dimulai
+                moveScript.isLockedInAction = true; 
+
                 if (moveScript.anim != null) {
                     moveScript.anim.Play("Nambang", 0, 0f); 
                 }
@@ -120,6 +121,31 @@ public class MiningScript : MonoBehaviour {
             Invoke("UpdateVisualBatuTanpaSkip", 0.1f); 
         } else {
             Hancur();
+        }
+    }
+
+    void Hancur() {
+        isDestroyed = true; 
+        if(globalChopGroup != null) globalChopGroup.SetActive(false);
+        
+        // 🌟 KUNCI: Lepas kunci pergerakan player SEGERA saat klik terakhir (batu hancur)
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null) {
+            PlayerMovement moveScript = player.GetComponent<PlayerMovement>();
+            if (moveScript != null) {
+                moveScript.isLockedInAction = false; // Player bisa jalan lagi!
+                moveScript.StopMining();            // Matikan animasi & beliung langsung
+            }
+        }
+
+        GameObject modelTerakhir = crystalModels[hitCount];
+        if (modelTerakhir != null) {
+            Vector3 centerPos = GetCenterPosition(modelTerakhir);
+            LeanTween.scale(modelTerakhir, Vector3.zero, 0.3f).setEaseInBack().setOnComplete(() => {
+                modelTerakhir.SetActive(false);
+                Destroy(gameObject, 0.1f); 
+            });
+            SpawnCoinLogam(centerPos); 
         }
     }
 
@@ -159,23 +185,6 @@ public class MiningScript : MonoBehaviour {
             int index = Mathf.Clamp(hitCount, 0, slotSprites.Length - 1);
             buttonImage.sprite = slotSprites[index];
         }
-    }
-
-    void Hancur() {
-        isDestroyed = true; 
-        if(globalChopGroup != null) globalChopGroup.SetActive(false);
-        
-        GameObject modelTerakhir = crystalModels[hitCount];
-        if (modelTerakhir != null) {
-            Vector3 centerPos = GetCenterPosition(modelTerakhir);
-            LeanTween.scale(modelTerakhir, Vector3.zero, 0.3f).setEaseInBack().setOnComplete(() => {
-                modelTerakhir.SetActive(false);
-                // 🔥 Menghancurkan total game object utama setelah batu hilang agar bersih dari hierarchy scene
-                Destroy(gameObject, 0.1f); 
-            });
-            SpawnCoinLogam(centerPos); 
-        }
-        // 🛑 Seluruh logika Coroutine Respawn sudah dibersihkan total dari sini!
     }
 
     void SpawnCoinLogam(Vector3 position) {

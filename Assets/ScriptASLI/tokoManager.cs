@@ -49,19 +49,29 @@ public class TokoManager : MonoBehaviour
     public AudioClip suaraBukaToko;    // 🔥 TAMBAHAN BARU
     public AudioClip suaraTutupToko;
 
+    [Header("Kustomisasi Level 3 & Tempat Berdiri")]
+    public GameObject squareBerdiriPlayer; // 🔥 Objek Square Baru
+
     [Header("Pengaturan Limit & Game Object Sapi (Urutan 1-5)")]
     public List<GameObject> listSapi3D = new List<GameObject>();
     public Button btnBeliSapi;
     public Sprite spriteSapiSoldOut;
+    public TextMeshProUGUI txtJumlahSapi; // 🔥 TAMBAHAN BARU
     private int jumlahSapiDibeli = 0;
 
     [Header("Pengaturan Limit & Game Object Kambing (Urutan 1-5)")]
     public List<GameObject> listKambing3D = new List<GameObject>();
     public Button btnBeliKambing;
     public Sprite spriteKambingSoldOut;
+    public TextMeshProUGUI txtJumlahKambing;
     private int jumlahKambingDibeli = 0;
 
     [HideInInspector] public bool isPlayerInside = false;
+    [Header("Pengaturan Jeda Auto-Open")]
+    [Tooltip("Durasi jeda (detik) dari jalan ke idle setelah collide sebelum panel terbuka")]
+    public float jedaBukaPanel = 0.15f; 
+
+    private Coroutine delayBukaTokoCoroutine;
     
     private bool sudahPernahDialog = false;
     private Coroutine mengetikCoroutine;
@@ -91,6 +101,9 @@ public class TokoManager : MonoBehaviour
         MatikanSemuaPanelDialog();
         SembuhkanSemuaHewanAwal();
 
+        // 🌟 DIUBAH: Jangan biarkan square berdiri langsung aktif di awal Level 3 sebelum dialog tamat!
+        if (squareBerdiriPlayer != null) squareBerdiriPlayer.SetActive(false);
+
         if (navCoinHUD != null)
         {
             originalNavCoinParent = navCoinHUD.parent;
@@ -108,6 +121,31 @@ public class TokoManager : MonoBehaviour
             btnNextDialogTunggal.onClick.AddListener(TombolNextDialogDiKlik);
             btnNextDialogTunggal.gameObject.SetActive(false);
         }
+        if (txtJumlahSapi != null) txtJumlahSapi.text = "Ternak Sapi\n(x5)";
+        if (txtJumlahKambing != null) txtJumlahKambing.text = "Ternak Kambing\n(x5)";
+    }
+
+    // 🌟 CARI FUNGSI UPDATE() DAN PASTIKAN SEPERTI INI:
+    void Update()
+    {
+        // 🌟 DIUBAH: Square berdiri hanya boleh aktif lewat Update jika dialog pertama sudah selesai ditonton!
+        if (sudahPernahDialog)
+        {
+            UpdateStatusSquareTempatBerdiri();
+        }
+    }
+
+    // 🌟 TAMBAHKAN FUNGSI BARU INI (UNTUK ALUR PERTAMA KALI MASUK LEWAT NAVIGASI):
+    public void PemicuMasukTokoPertamaKali()
+    {
+        isPlayerInside = true;
+        if (notifTandaSeruObj != null) notifTandaSeruObj.SetActive(false);
+
+        // 🔒 KUNCI: Pastikan square & collider belanja mati total saat pemain baru tiba!
+        if (squareBerdiriPlayer != null) squareBerdiriPlayer.SetActive(false);
+
+        currentDialogIndex = 0; 
+        MulaiDialogNaratif();
     }
 
     private void SembuhkanSemuaHewanAwal()
@@ -122,14 +160,25 @@ public class TokoManager : MonoBehaviour
         }
     }
 
+    private void UpdateStatusSquareTempatBerdiri()
+    {
+        bool sudahLevel3 = (Level3Manager.instance != null) && Level3Manager.instance.isBabak3Aktif;
+        if (squareBerdiriPlayer != null)
+        {
+            squareBerdiriPlayer.SetActive(sudahLevel3);
+        }
+    }
+
     public void PerbaruiTampilanToko()
     {
         bool sudahLevel3 = (Level3Manager.instance != null) && Level3Manager.instance.isBabak3Aktif;
 
+        UpdateStatusSquareTempatBerdiri();
+
         if (sudahLevel3)
         {
             if (txtPeringatanTokoObj != null) txtPeringatanTokoObj.SetActive(false);
-            if (iconTokoHUD != null) iconTokoHUD.SetActive(true);
+            // if (iconTokoHUD != null) iconTokoHUD.SetActive(true);
 
             if (!sudahPernahDialog && notifTandaSeruObj != null)
             {
@@ -212,7 +261,7 @@ public class TokoManager : MonoBehaviour
         StartCoroutine(JalankanMekanikKetikAman());
     }
 
-    IEnumerator JalankanMekanikKetikAman()
+     IEnumerator JalankanMekanikKetikAman()
     {
         yield return new WaitForEndOfFrame();
 
@@ -224,7 +273,7 @@ public class TokoManager : MonoBehaviour
         }
     }
 
-    // 櫨 FUNGSI DIPANGGIL SAAT PANEL DI-TAP
+    // 📩 FUNGSI DIPANGGIL SAAT PANEL DI-TAP
     public void SkipKetikDialogToko()
     {
         // Jika teks masih berjalan mengetik, potong langsung jadi utuh
@@ -307,6 +356,8 @@ public class TokoManager : MonoBehaviour
         sudahPernahDialog = true; 
         MatikanSemuaPanelDialog();
         if (btnNextDialogTunggal != null) btnNextDialogTunggal.gameObject.SetActive(false);
+        
+        // 🔒 JANGAN nyalakan square dulu di sini, biarkan menyala saat panel toko ditutup!
         BukaSubPanelHewan();
     }
 
@@ -346,7 +397,8 @@ public class TokoManager : MonoBehaviour
     }
 
     public void CloseTokoPanel()
-    {   if (audioSourceToko != null && suaraTutupToko != null) {
+    {   
+        if (audioSourceToko != null && suaraTutupToko != null) {
             audioSourceToko.PlayOneShot(suaraTutupToko);
         }
         GameObject panelToClose = (masterTokoPanelUtama != null) ? masterTokoPanelUtama : mainTokoPanel;
@@ -362,7 +414,12 @@ public class TokoManager : MonoBehaviour
 
         SembuhkanDanBawaNavCoinKeDepan(false);
 
-        // 🔥 HUBUNGKAN KE REMINDER: Memicu tutorial kakek beranak ketika panel toko ditutup sukses
+        // 🌟 UTAMA: Aktifkan square & collider tempat berdiri murni setelah dialog tamat DAN panel toko ditutup pertama kali!
+        if (sudahPernahDialog && Level3Manager.instance != null && Level3Manager.instance.isBabak3Aktif)
+        {
+            if (squareBerdiriPlayer != null) squareBerdiriPlayer.SetActive(true);
+        }
+
         if (jumlahSapiDibeli > 0 || jumlahKambingDibeli > 0)
         {
             if (ReminderManager.instance != null)
@@ -396,6 +453,7 @@ public class TokoManager : MonoBehaviour
         }
     }
 
+    // 🌟 PERBARUI FUNGSI INI DI TOKOMANAGER.CS (HAPUS PEMANGGILAN MISI YANG DOUBLE) 🌟
     public void BeliItemToko(int hargaItem)
     {
         if (MoneyManager.instance != null)
@@ -405,18 +463,17 @@ public class TokoManager : MonoBehaviour
                 MoneyManager.instance.RemoveMoney(hargaItem);
                 Debug.Log("<color=green>[Toko]</color> Pembelian Sukses! Sisa: " + MoneyManager.instance.totalMoney);
                 JalankanEfekAudioDanKoin(hargaItem);
+                
+                // KUNCI PERBAIKAN: Hapus baris TaskManager.instance.NotifyHewanDibeli() dari sini!
+                // Karena ini adalah fungsi beli item umum (seperti pakan/peralatan), bukan beli hewan.
             }
             else
             {
                 BukaPanelUangKurang();
             }
         }
-        if (TaskManager.instance != null) TaskManager.instance.NotifyHewanDibeli();
     }
 
-    // =================================================================
-    // 🔥 FUNGSI BELI SAPI (LANGSUNG AMBIL IMAGE DARI COMPONENT BUTTON)
-    // =================================================================
     public void BeliSapiSpesifik(int hargaSapi)
     {
         if (jumlahSapiDibeli >= 5) return;
@@ -433,6 +490,10 @@ public class TokoManager : MonoBehaviour
                 }
 
                 jumlahSapiDibeli++;
+                if (txtJumlahSapi != null) 
+                {
+                    txtJumlahSapi.text = "Ternak Sapi\n(x" + (5 - jumlahSapiDibeli) + ")";
+                }
 
                 if (jumlahSapiDibeli >= 5)
                 {
@@ -446,7 +507,6 @@ public class TokoManager : MonoBehaviour
 
                 JalankanEfekAudioDanKoin(hargaSapi);
                 
-                // 🔥 PINDAH KE SINI: Hanya terhitung jika uangnya cukup
                 if (TaskManager.instance != null) TaskManager.instance.NotifyHewanDibeli();
             }
             else
@@ -454,7 +514,6 @@ public class TokoManager : MonoBehaviour
                 BukaPanelUangKurang();
             }
         }
-        // ❌ Hapus NotifyHewanDibeli() yang ada di sini sebelumnya
     }
 
     public void BeliKambingSpesifik(int hargaKambing)
@@ -473,6 +532,10 @@ public class TokoManager : MonoBehaviour
                 }
 
                 jumlahKambingDibeli++;
+                if (txtJumlahKambing != null) 
+                {
+                    txtJumlahKambing.text = "Ternak Kambing\n(x" + (5 - jumlahKambingDibeli) + ")";
+                }
 
                 if (jumlahKambingDibeli >= 5)
                 {
@@ -486,7 +549,6 @@ public class TokoManager : MonoBehaviour
 
                 JalankanEfekAudioDanKoin(hargaKambing);
                 
-                // 🔥 PINDAH KE SINI: Hanya terhitung jika uangnya cukup
                 if (TaskManager.instance != null) TaskManager.instance.NotifyHewanDibeli();
             }
             else
@@ -494,7 +556,6 @@ public class TokoManager : MonoBehaviour
                 BukaPanelUangKurang();
             }
         }
-        // ❌ Hapus NotifyHewanDibeli() yang ada di sini sebelumnya
     }
 
     private void JalankanEfekAudioDanKoin(int hargaYangDibeli)
@@ -542,6 +603,28 @@ public class TokoManager : MonoBehaviour
         {
             isPlayerInside = true;
             PerbaruiTampilanToko(); 
+
+            // Cek jika sudah level 3
+            bool sudahLevel3 = (Level3Manager.instance != null) && Level3Manager.instance.isBabak3Aktif;
+            if (sudahLevel3)
+            {
+                // 🔥 Hentikan coroutine yang lama jika ada untuk menghindari penumpukan
+                if (delayBukaTokoCoroutine != null) StopCoroutine(delayBukaTokoCoroutine);
+                
+                // 🔥 Jalankan coroutine jeda sebelum membuka panel
+                delayBukaTokoCoroutine = StartCoroutine(JalankanJedaBukaToko());
+            }
+        }
+    }
+    IEnumerator JalankanJedaBukaToko()
+    {
+        // Menunggu selama beberapa detik memberikan waktu player transisi ke animasi idle
+        yield return new WaitForSeconds(jedaBukaPanel);
+        
+        // Pastikan player masih berada di dalam area collider saat jeda selesai
+        if (isPlayerInside)
+        {
+            TombolTokoHUDDiKlik();
         }
     }
 
@@ -550,7 +633,14 @@ public class TokoManager : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             isPlayerInside = false;
-            if (iconTokoHUD != null) iconTokoHUD.SetActive(false);
+
+            // 🔥 Batalkan jeda buka panel jika player terlanjur keluar area sebelum waktu habis
+            if (delayBukaTokoCoroutine != null) 
+            {
+                StopCoroutine(delayBukaTokoCoroutine);
+            }
+
+            // if (iconTokoHUD != null) iconTokoHUD.SetActive(false);
             if (notifTandaSeruObj != null) notifTandaSeruObj.SetActive(false);
             if (txtPeringatanTokoObj != null) txtPeringatanTokoObj.SetActive(false);
             
@@ -590,7 +680,6 @@ public class TokoManager : MonoBehaviour
                     InventoryManager.instance.AddPakanDariToko();
                 }
 
-                // 🔥 PINDAH KE SINI: Task hanya update kalau pakan benar-benar terbeli
                 if (TaskManager.instance != null) TaskManager.instance.NotifyBeliPakan();
             }
             else
@@ -598,41 +687,23 @@ public class TokoManager : MonoBehaviour
                 BukaPanelUangKurang();
             }
         }
-        // ❌ Hapus NotifyBeliPakan() yang ada di sini sebelumnya
     }
 
-    // 🔄 PERBARUI FUNGSI INI DI TOKOMANAGER.CS
     public void UpdateVisualHewanBerdasarkanJumlah(int totalSapi, int totalKambing)
     {
-        // --- KASUS SAPI ---
         if (listSapi3D.Count >= 5)
         {
-            // 🔹 Hewan ke-2 (index 1) aktif jika jumlah mencapai 30 ekor
             if (totalSapi >= 30 && listSapi3D[1] != null) listSapi3D[1].SetActive(true);
-            
-            // Hewan ke-3 (index 2) aktif jika jumlah mencapai 50 ekor
             if (totalSapi >= 50 && listSapi3D[2] != null) listSapi3D[2].SetActive(true);
-            
-            // Hewan ke-4 (index 3) aktif jika jumlah mencapai 80 ekor
             if (totalSapi >= 80 && listSapi3D[3] != null) listSapi3D[3].SetActive(true);
-            
-            // Hewan ke-5 (index 4) aktif jika jumlah mencapai 100 ekor
             if (totalSapi >= 100 && listSapi3D[4] != null) listSapi3D[4].SetActive(true);
         }
 
-        // --- KASUS KAMBING ---
         if (listKambing3D.Count >= 5)
         {
-            // 🔹 Hewan ke-2 (index 1) aktif jika jumlah mencapai 30 ekor
             if (totalKambing >= 30 && listKambing3D[1] != null) listKambing3D[1].SetActive(true);
-            
-            // Hewan ke-3 (index 2) aktif jika jumlah mencapai 50 ekor
             if (totalKambing >= 50 && listKambing3D[2] != null) listKambing3D[2].SetActive(true);
-            
-            // Hewan ke-4 (index 3) aktif jika jumlah mencapai 80 ekor
             if (totalKambing >= 80 && listKambing3D[3] != null) listKambing3D[3].SetActive(true);
-            
-            // Hewan ke-5 (index 4) aktif jika jumlah mencapai 100 ekor
             if (totalKambing >= 100 && listKambing3D[4] != null) listKambing3D[4].SetActive(true);
         }
     }

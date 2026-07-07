@@ -138,12 +138,19 @@ public class ZakatTernakPanel : MonoBehaviour
 
     void OnEnable()
     {
+        // 🛡️ Proteksi Ganda: Jika ternyata sudah selesai, langsung matikan paksa!
+        if (ZakatPanelManager.instance != null && ZakatPanelManager.instance.isPeternakanCompleted)
+        {
+            Debug.Log("[Proteksi] Panel Ternak mendeteksi sudah completed. Mematikan diri!");
+            gameObject.SetActive(false);
+            return;
+        }
+
         if (panelKuisBG != null) panelKuisBG.SetActive(true);
         if (panelFormKuis != null) panelFormKuis.SetActive(false);
         if (panelReward != null) panelReward.SetActive(false);
         if (panelHasilKuis != null) panelHasilKuis.SetActive(false);
         
-        // 🔥 PERBAIKAN: Begitu kuis ini aktif, kunci & matikan coroutine beranak di latar belakang saat itu juga!
         if (JurnalManager.instance != null)
         {
             JurnalManager.instance.isTernakLockedInJurnal = true;

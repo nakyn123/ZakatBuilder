@@ -138,6 +138,14 @@ public class ZakatEmasPerakPanel : MonoBehaviour
 
     void OnEnable()
     {
+        // 🛡️ Proteksi Ganda: Jika ternyata sudah selesai, langsung matikan paksa!
+        if (ZakatPanelManager.instance != null && ZakatPanelManager.instance.isEmasPerakCompleted)
+        {
+            Debug.Log("[Proteksi] Panel Emas Perak mendeteksi sudah completed. Mematikan diri!");
+            gameObject.SetActive(false);
+            return;
+        }
+
         if (panelKuisBG != null) panelKuisBG.SetActive(true);
         if (panelFormKuis != null) panelFormKuis.SetActive(false);
         if (panelReward != null) panelReward.SetActive(false);

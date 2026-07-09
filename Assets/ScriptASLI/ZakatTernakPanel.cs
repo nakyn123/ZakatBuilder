@@ -564,7 +564,6 @@ public class ZakatTernakPanel : MonoBehaviour
     {   
         if (audioSource != null) { audioSource.Stop(); audioSource.loop = false; }
         
-        // MATIKAN PERMANEN karena sudah berhasil menjawab form kuis dengan benar
         if (JurnalManager.instance != null) 
         {
             JurnalManager.instance.MatikanSistemBeranak();
@@ -572,7 +571,6 @@ public class ZakatTernakPanel : MonoBehaviour
         
         if (MoneyManager.instance != null) MoneyManager.instance.AddMoney(100000);
 
-        // 1. Set status peternakan selesai terlebih dahulu agar dibaca oleh Level3Manager
         if (ZakatPanelManager.instance != null)
         {
             ZakatPanelManager.instance.isPeternakanCompleted = true;
@@ -581,19 +579,30 @@ public class ZakatTernakPanel : MonoBehaviour
             ZakatPanelManager.instance.CloseZakatPanel();
         }
 
-        // 🔥 2. AMANKAN & KOSONGKAN PANEL DARI LEVEL 3 MANAGER AGAR TIDAK MUNCUL LAGI
         if (Level3Manager.instance != null)
         {
             if (Level3Manager.instance.panelBabLvl3 != null) Level3Manager.instance.panelBabLvl3.SetActive(false);
             if (Level3Manager.instance.conversionPanel != null) Level3Manager.instance.conversionPanel.SetActive(false);
         }
 
+        // =====================================================================
+        // 🔥 EKSEKUSI PENGUNCIAN ABSOLUT NOTIFIKASI
+        // =====================================================================
+        if (TaskManager.instance != null)
+        {
+            // Panggil fungsi master kuncian bersih yang baru saja kita buat tadi
+            TaskManager.instance.SetGameEndingBersih();
+            
+            // Simpan progress permainan dalam kondisi terkunci aman
+            TaskManager.instance.SimpanProgressGameKeKomputer();
+        }
+        // =====================================================================
+
         if (panelReward != null) panelReward.SetActive(false);
         
-        // 3. Panggil Ending Manager untuk memulai sequence ending game
         if (EndingManager.instance != null)
         {
-            EndingManager.instance.MulaiSequenceEnding(); //[cite: 3, 4]
+            EndingManager.instance.MulaiSequenceEnding(); 
         }
 
         if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(gameObject);

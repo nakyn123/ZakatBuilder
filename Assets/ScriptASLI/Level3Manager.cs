@@ -142,6 +142,33 @@ public class Level3Manager : MonoBehaviour
         // 3. Buka barier wilayah babak 3 (Update visual status & tombol UI dijalankan di sini)
         SwitchToLevel3();
 
+        // =====================================================================
+        // 🔥 FIX UTAMA: PAKSA KEBANGKITAN HUD JIRAN & KOIN RUPIAH UTAMA
+        // =====================================================================
+        if (UIManager.instance != null)
+        {
+            // Reset hitungan panel UIManager menjadi 0 agar HUD Gameplay mau menyala secara normal
+            System.Type.GetType("UIManager").GetField("openedPanelsCount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(UIManager.instance, 0);
+            
+            // Ambil objek UI gameplayHUD dan paksa set aktif ke true
+            GameObject gameplayHUDObj = (GameObject)System.Type.GetType("UIManager").GetField("gameplayHUD", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(UIManager.instance);
+            if (gameplayHUDObj != null) 
+            {
+                gameplayHUDObj.SetActive(true);
+            }
+        }
+
+        // Temukan nav-coin target utama (Rupiah) melalui InventoryManager jika terikat, lalu paksa aktifkan
+        if (InventoryManager.instance != null)
+        {
+            GameObject coinObj = (GameObject)System.Type.GetType("InventoryManager").GetField("navCoinObject", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(InventoryManager.instance);
+            if (coinObj != null)
+            {
+                coinObj.SetActive(true);
+            }
+        }
+        // =====================================================================
+
         // 4. LAKUKAN KONVERSI DI PALING AKHIR (Setelah semua urutan UI & logika selesai)
         if (MoneyManager.instance != null && InventoryManager.instance != null)
         {

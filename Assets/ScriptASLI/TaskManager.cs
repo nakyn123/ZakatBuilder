@@ -87,6 +87,15 @@ public class TaskManager : MonoBehaviour {
     [TextArea(3, 10)] public string teksLengkapEdaran; //
     public float kecepatanKetik = 0.05f;    
 
+    // --- TAMBAHAN AUDIO UNTUK TYPEWRITER SURAT EDARAN KADES ---
+    [Header("--- Audio Edaran Kades Settings ---")]
+    [Tooltip("Masukkan komponen AudioSource yang digunakan untuk membunyikan teks edaran")]
+    public AudioSource audioSourceEdaran;
+    [Tooltip("Masukkan file sound effect pendek dialog kamu")]
+    public AudioClip soundClipEdaran;
+    [Tooltip("Suara berbunyi setiap berapa karakter? (Rekomendasi: 3 atau 4 karena kecepatan ketikmu cepat)")]
+    public int karakterPerBunyiEdaran = 3;
+
     [Header("--- Babak 2: Misi 2 (Tambang Logam) ---")]
     public GameObject barTambangLogam;       // Bar UI Baru untuk Misi Tambang
     public Button btnAmbilTambangLogam;       // Tombol Ambil Hadiah
@@ -156,6 +165,8 @@ public class TaskManager : MonoBehaviour {
     private int isiPakanCount = 0; //
     private bool isIsiPakanClaimed = false; //
 
+    [HideInInspector] public bool isGameEnding = false;
+
 
     // =================================================================
     // ⚙️ ENGINE CORE FUNCTIONS (START, UPDATE, INITIALIZATION)
@@ -179,6 +190,7 @@ public class TaskManager : MonoBehaviour {
     }
 
     void Update() {
+        if (isGameEnding) return;
         if (isMisi2Claimed && !isNisabMisiClaimed) {
             UpdateMisiNisabProgress();
         }
@@ -604,6 +616,7 @@ public class TaskManager : MonoBehaviour {
     }
 
     private void UpdateMisiNisabProgress() {
+        if (isGameEnding) return;
         if (MoneyManager.instance == null || barJualNisab == null || !barJualNisab.activeSelf) return;
 
         int uangSekarang = MoneyManager.instance.totalMoney;
@@ -697,10 +710,42 @@ public class TaskManager : MonoBehaviour {
         if (txtIsiEdaranKades != null) {
             edaranSedangMengetik = true; 
             txtIsiEdaranKades.text = ""; 
-            foreach (char huruf in teksLengkapEdaran.ToCharArray()) {
-                txtIsiEdaranKades.text += huruf;
+
+            // Pengaturan Nada Bapak-bapak Tua (Berat & Rendah)
+            float pitchMinBapak = 0.55f;
+            float pitchMaxBapak = 0.75f;
+
+            char[] hurufArray = teksLengkapEdaran.ToCharArray();
+
+            for (int i = 0; i < hurufArray.Length; i++) {
+                txtIsiEdaranKades.text += hurufArray[i];
+
+                // Hitung sisa huruf yang belum diketik ke titik akhir kalimat
+                int sisaKarakter = hurufArray.Length - (i + 1);
+
+                // Logika Suara: Bunyi di kelipatan karakterPerBunyiEdaran, BUKAN spasi, dan sisa karakter > 3
+                if (i > 0 && i % karakterPerBunyiEdaran == 0 && sisaKarakter > 3) {
+                    char karakterSekarang = hurufArray[i];
+
+                    // Benar-benar abaikan spasi / white space
+                    if (karakterSekarang != ' ' && audioSourceEdaran != null && soundClipEdaran != null) {
+                        audioSourceEdaran.clip = soundClipEdaran;
+                        // Terapkan pitch bapak-bapak tua
+                        audioSourceEdaran.pitch = Random.Range(pitchMinBapak, pitchMaxBapak);
+                        audioSourceEdaran.Play();
+                    }
+                }
+                // Hentikan paksa audio lebih awal jika sudah sangat mendekati akhir kalimat
+                else if (sisaKarakter <= 3 && audioSourceEdaran != null && audioSourceEdaran.isPlaying) {
+                    audioSourceEdaran.Stop();
+                }
+
                 yield return new WaitForSeconds(kecepatanKetik); 
             }
+
+            // Pastikan audio mati total saat ketikan selesai murni
+            if (audioSourceEdaran != null) audioSourceEdaran.Stop();
+
             edaranSedangMengetik = false; 
             if (btnCloseEdaranKades != null) {
                 btnCloseEdaranKades.gameObject.SetActive(true);
@@ -711,6 +756,10 @@ public class TaskManager : MonoBehaviour {
     public void SkipKetikEdaran() {
         if (edaranSedangMengetik) {
             if (typewriterCoroutine != null) StopCoroutine(typewriterCoroutine);
+
+            // FIX AUDIO: Matikan suara edaran secara paksa saat di-skip
+            if (audioSourceEdaran != null) audioSourceEdaran.Stop();
+
             if (txtIsiEdaranKades != null) {
                 txtIsiEdaranKades.text = teksLengkapEdaran;
             }
@@ -724,7 +773,7 @@ public class TaskManager : MonoBehaviour {
     public void TutupSuratEdaranKades() {
         if (panelEdaranKades != null) {
             if (typewriterCoroutine != null) StopCoroutine(typewriterCoroutine);
-
+            if (audioSourceEdaran != null) audioSourceEdaran.Stop();
             if (UIManager.instance != null) {
                 UIManager.instance.ClosePanelMenu(panelEdaranKades);
             } else {
@@ -860,20 +909,14 @@ public class TaskManager : MonoBehaviour {
         }
     }
 
-    public void NotifyBeliPakan() {
-        if (!isBeliPakanDone) {
-            isBeliPakanDone = true;
-            // ✂️ TULISAN SELESAI DI SINI SUDAH DIHAPUS
-            if (imgBtnBeliPakan != null) imgBtnBeliPakan.sprite = btnHijauAmbil; 
-            if (ikonNotifikasi != null && !misiPanel.activeSelf) ikonNotifikasi.SetActive(true);
-
-            // ✂️ PEMANGGILAN OTOMATIS DI SINI SUDAH DIHAPUS KARENA HARUS TUNGGU KLAIM REWARD
-        }
-    }
-
-    // 🌟 PERBARUI FUNGSI INI DI TASKMANAGER.CS 🌟
     public void NotifyHewanDibeli() {
         if (!isKeTokoDone && barBeliTernak != null && barBeliTernak.activeSelf) {
+            
+            // =============== TAMBAHAN PENGAMAN ===============
+            // Pemain mulai mencicil beli hewan, matikan bar bantuan pergi ke toko
+            if (barKeToko != null && barKeToko.activeSelf) barKeToko.SetActive(false);
+            // =================================================
+
             beliHewanMisi1Count++;
             if (beliHewanMisi1Count > targetBeliHewanMisi1) beliHewanMisi1Count = targetBeliHewanMisi1;
             
@@ -885,16 +928,33 @@ public class TaskManager : MonoBehaviour {
             
             if (beliHewanMisi1Count >= targetBeliHewanMisi1) {
                 isKeTokoDone = true;
-                // ✂️ TULISAN SELESAI DI SINI SUDAH DIHAPUS, TEKS TETAP (3/3)
                 if (imgBtnKeToko != null) imgBtnKeToko.sprite = btnHijauAmbil; 
                 if (ikonNotifikasi != null && !misiPanel.activeSelf) ikonNotifikasi.SetActive(true);
-                
-                // ✂️ PEMANGGILAN OTOMATIS DI SINI SUDAH DIHAPUS KARENA HARUS TUNGGU KLAIM REWARD
             }
+        }
+    }
+
+    public void NotifyBeliPakan() {
+        if (!isBeliPakanDone) {
+            
+            // =============== TAMBAHAN PENGAMAN ===============
+            // Pemain sukses beli pakan, otomatis matikan bar bantuan pergi ke toko
+            if (barKeToko != null && barKeToko.activeSelf) barKeToko.SetActive(false);
+            // =================================================
+
+            isBeliPakanDone = true;
+            if (imgBtnBeliPakan != null) imgBtnBeliPakan.sprite = btnHijauAmbil; 
+            if (ikonNotifikasi != null && !misiPanel.activeSelf) ikonNotifikasi.SetActive(true);
         }
     }
     public void NotifyIsiPakanWorld3D() {
         if (!isIsiPakanDone) {
+
+            // =============== TAMBAHAN PENGAMAN ===============
+            // Pemain sudah mulai mengisi pakan di world, sembunyikan bar bantuan navigasinya
+            if (barKeIsiPakan != null && barKeIsiPakan.activeSelf) barKeIsiPakan.SetActive(false);
+            // =================================================
+
             isiPakanCount++;
             if (isiPakanCount > targetIsiPakan) isiPakanCount = targetIsiPakan;
             if (txtIsiPakan != null) txtIsiPakan.text = $"Mengisi pakan hewan ({isiPakanCount}/{targetIsiPakan})";
@@ -985,6 +1045,14 @@ public class TaskManager : MonoBehaviour {
         totalLogamMinedCount = totalCount;
         PlayerPrefs.SetInt("Saved_TotalLogamMinedCount", totalLogamMinedCount);
         PlayerPrefs.Save();
+
+        // =============== TAMBAHAN PENGAMAN ===============
+        // Jika pemain sudah menambang minimal 1 kali, otomatis hilangkan bantuan "Pergi ke Tambang"
+        if (totalLogamMinedCount > 0 && barKeTambang != null && barKeTambang.activeSelf)
+        {
+            barKeTambang.SetActive(false);
+        }
+        // =================================================
 
         if (totalLogamMinedCount >= targetTambangLogam) {
             isTambangLogamDone = true;
@@ -1086,5 +1154,34 @@ public class TaskManager : MonoBehaviour {
             if (rawImageHUDArrow != null) rawImageHUDArrow.SetActive(true);
             ui3DArrowScript.SetTarget(targetTerpilih, player.transform);
         }
+    }
+
+    public void SetGameEndingBersih()
+    {
+        isGameEnding = true;
+
+        // Padamkan seluruh bar misi tanpa kecuali
+        if (barTebangJual != null) barTebangJual.SetActive(false);
+        if (barTebangPohon != null) barTebangPohon.SetActive(false);
+        if (barJualNisab != null) barJualNisab.SetActive(false);
+        if (barKeKantorZakat != null) barKeKantorZakat.SetActive(false);
+        if (barEdaranKades != null) barEdaranKades.SetActive(false);
+        if (barTambangLogam != null) barTambangLogam.SetActive(false);
+        if (barBeliTernak != null) barBeliTernak.SetActive(false);
+        if (barBeliPakan != null) barBeliPakan.SetActive(false);
+        if (barIsiPakan != null) barIsiPakan.SetActive(false);
+        if (barKeToko != null) barKeToko.SetActive(false);
+        if (barKeIsiPakan != null) barKeIsiPakan.SetActive(false);
+
+        // Kunci mati ikon notifikasi dan panah HUD agar tidak bisa dinyalakan oleh script lain
+        if (ikonNotifikasi != null) ikonNotifikasi.SetActive(false);
+        if (rawImageHUDArrow != null) rawImageHUDArrow.SetActive(false);
+
+        if (ui3DArrowScript != null)
+        {
+            ui3DArrowScript.SetTarget(null, null);
+        }
+
+        Debug.Log("<color=red>[TaskManager]</color> Game Selesai! Arus UI Misi dikunci mati secara permanen.");
     }
 }

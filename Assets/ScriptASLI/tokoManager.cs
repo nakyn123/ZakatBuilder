@@ -37,6 +37,9 @@ public class TokoManager : MonoBehaviour
         "barang yang bisa kamu beli. Tapi kalau tujuanmu mencari hewan ternak yang sehat untuk dipelihara, kamu datang ke tempat yang tepat. Kalau butuh pakan atau perlengkapan perawatan, aku juga menyediakannya. silahkan datang kapan saja untuk membeli sesuatu."
     };
     public float kecepatanKetik = 0.02f;
+    [Header("Audio Typewriter Settings")]
+    [Tooltip("Suara berbunyi setiap berapa karakter? (Rekomendasi: 3 atau 4 karena kecepatan ketikmu 0.02 sangat cepat)")]
+    public int karakterPerBunyiToko = 3;
 
     [Header("UI Toko Multi-Panel References")]
     public GameObject mainTokoPanel;        // toko-panel-asli
@@ -276,20 +279,21 @@ public class TokoManager : MonoBehaviour
     // 📩 FUNGSI DIPANGGIL SAAT PANEL DI-TAP
     public void SkipKetikDialogToko()
     {
-        // Jika teks masih berjalan mengetik, potong langsung jadi utuh
+        // 🛠️ PERBAIKAN: Mengubah magnetssedangMengetIK menjadi magnetssedangMengetik
         if (magnetssedangMengetik)
         {
-            // 🔥 PERBAIKAN 3: Sekarang Coroutine ketik inti bisa dihentikan secara mutlak!
             if (mengetikCoroutine != null) StopCoroutine(mengetikCoroutine);
             
+            // FIX AUDIO: Hentikan suara seketika saat di-skip
+            if (audioSourceToko != null) audioSourceToko.Stop();
+
             if (listTxtDialogs != null && currentDialogIndex < listTxtDialogs.Length && listTxtDialogs[currentDialogIndex] != null)
             {
                 listTxtDialogs[currentDialogIndex].text = pesanDialog[currentDialogIndex];
             }
             
-            magnetssedangMengetik = false; // Tandai teks sudah penuh
+            magnetssedangMengetik = false; 
 
-            // Aktifkan tombol next tunggal agar player bisa lanjut ke panel berikutnya
             if (btnNextDialogTunggal != null) 
             {
                 btnNextDialogTunggal.gameObject.SetActive(true);
@@ -300,18 +304,57 @@ public class TokoManager : MonoBehaviour
 
     IEnumerator KetikTeksDialog(TextMeshProUGUI targetText, string teksPenuh)
     {
+        // 🛠️ PERBAIKAN: Mengubah magnetssedangMengetIK menjadi magnetssedangMengetik
         magnetssedangMengetik = true;
         targetText.text = "";
 
-        foreach (char huruf in teksPenuh.ToCharArray())
+        // Pengaturan rentang suara Laki-laki Muda (Normal - Agak tinggi)
+        float pitchMinMuda = 0.95f;
+        float pitchMaxMuda = 1.20f;
+
+        char[] hurufArray = teksPenuh.ToCharArray();
+
+        for (int i = 0; i < hurufArray.Length; i++)
         {
-            targetText.text += huruf;
+            targetText.text += hurufArray[i];
+
+            // Hitung sisa huruf yang belum diketik menuju akhir teks
+            int sisaKarakter = hurufArray.Length - (i + 1);
+
+            // Logika Suara: Bunyi di kelipatan karakterPerBunyiToko, BUKAN spasi, dan sisa karakter > 3
+            if (i > 0 && i % karakterPerBunyiToko == 0 && sisaKarakter > 3)
+            {
+                char karakterSekarang = hurufArray[i];
+
+                // Abaikan spasi / white space
+                if (karakterSekarang != ' ' && audioSourceToko != null && suaraUangBeli != null)
+                {
+                    audioSourceToko.clip = suaraUangBeli;
+                    // Terapkan pitch acak laki-laki muda
+                    audioSourceToko.pitch = Random.Range(pitchMinMuda, pitchMaxMuda);
+                    
+                    // --- TRIK KHUSUS VOLUME DIALOG TOKO ---
+                    float volumeAsliObjek = audioSourceToko.volume;
+                    audioSourceToko.volume = 0.7f;
+                    audioSourceToko.Play();
+                    audioSourceToko.volume = volumeAsliObjek;
+                }
+            }
+            // Hentikan paksa audio lebih awal jika sudah mendekati akhir kalimat
+            else if (sisaKarakter <= 3 && audioSourceToko != null && audioSourceToko.isPlaying)
+            {
+                audioSourceToko.Stop();
+            }
+
             yield return new WaitForSeconds(kecepatanKetik);
         }
 
+        // Pastikan audio mati total saat huruf selesai diketik secara natural
+        if (audioSourceToko != null) audioSourceToko.Stop();
+
+        // 🛠️ PERBAIKAN: Mengubah magnetssedangMengetIK menjadi magnetssedangMengetik
         magnetssedangMengetik = false;
         
-        // Kembalikan tombol next aktif jika teks sudah selesai mengetik secara natural
         if (btnNextDialogTunggal != null) 
         {
             btnNextDialogTunggal.gameObject.SetActive(true);
@@ -321,12 +364,16 @@ public class TokoManager : MonoBehaviour
 
     public void TombolNextDialogDiKlik()
     {
+        // 🛠️ PERBAIKAN: Mengubah magnetssedangMengetIK menjadi magnetssedangMengetik
         if (magnetssedangMengetik) return; 
 
         if (mengetikCoroutine != null) 
         {
             StopCoroutine(mengetikCoroutine);
         }
+
+        // FIX AUDIO: Amankan agar audio mati total saat berpindah panel dialog
+        if (audioSourceToko != null) audioSourceToko.Stop();
 
         if (listTxtDialogs != null && currentDialogIndex < listTxtDialogs.Length && listTxtDialogs[currentDialogIndex] != null)
         {
@@ -448,6 +495,8 @@ public class TokoManager : MonoBehaviour
                 {
                     navCoinHUD.SetParent(originalNavCoinParent, true);
                     navCoinHUD.SetSiblingIndex(originalNavCoinSiblingIndex);
+                    // Tambahan: Pastikan objeknya dipaksa menyala kembali di lokasi aslinya
+                    navCoinHUD.gameObject.SetActive(true);
                 }
             }
         }
@@ -643,7 +692,7 @@ public class TokoManager : MonoBehaviour
             // if (iconTokoHUD != null) iconTokoHUD.SetActive(false);
             if (notifTandaSeruObj != null) notifTandaSeruObj.SetActive(false);
             if (txtPeringatanTokoObj != null) txtPeringatanTokoObj.SetActive(false);
-            
+            if (audioSourceToko != null) audioSourceToko.Stop();
             bool adaDialogAktif = false;
             if (listDialogPanels != null)
             {

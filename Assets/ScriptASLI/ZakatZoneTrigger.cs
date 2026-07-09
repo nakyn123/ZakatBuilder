@@ -7,10 +7,10 @@ public class ZakatZoneTrigger : MonoBehaviour
     [Header("Konfigurasi Zona")]
     public TipeZona jenisZona;
     public UI3DArrowNavigation uiArrowScript;
-    public GameObject rawImageDisplay; // Raw Image di Canvas HUD
+    public GameObject rawImageDisplay; 
 
     [Header("Referensi UI Bar Misi Terkait")]
-    public GameObject barNavigasiMisiIni; // Masukkan bar navigasi yang harus hilang saat tiba
+    public GameObject barNavigasiMisiIni; 
 
     private void OnTriggerEnter(Collider other)
     {
@@ -24,7 +24,7 @@ public class ZakatZoneTrigger : MonoBehaviour
                 uiArrowScript.HideArrow();
                 if (rawImageDisplay != null) rawImageDisplay.SetActive(false);
 
-                // 2. Hapus bar navigasi "Pergi" dari panel misi
+                // REVISI: Paksa hilangkan bar misi navigasi ini secara total dari hirarki UI
                 if (barNavigasiMisiIni != null) {
                     barNavigasiMisiIni.SetActive(false);
                 }
@@ -35,7 +35,7 @@ public class ZakatZoneTrigger : MonoBehaviour
                     TokoManager.instance.PemicuMasukTokoPertamaKali();
                 }
 
-                // 4. 🌟 BARU: Langsung matikan tabung lingkaran merah ini saat ini juga tanpa delay!
+                // 4. Langsung matikan tabung lingkaran merah zona ini
                 gameObject.SetActive(false); 
             }
         }

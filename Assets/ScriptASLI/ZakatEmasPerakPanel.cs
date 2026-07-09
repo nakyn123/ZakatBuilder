@@ -434,26 +434,39 @@ public class ZakatEmasPerakPanel : MonoBehaviour
         float correctEmasAmount = MoneyManager.instance.totalEmas * 0.025f;
         float correctPerakAmount = MoneyManager.instance.totalPerak * 0.025f;
 
+        // --- 1. VALIDASI EMAS ---
         if (isEmasWajib && inputZakatEmas != null)
         {
-            string cleanEmas = inputZakatEmas.text.Replace(",", ".");
+            // Bersihkan teks " gr", spasi, dan ganti koma menjadi titik desimal
+            string cleanEmas = inputZakatEmas.text.Replace(" gr", "").Replace(" ", "").Replace(",", ".");
+            
             if (float.TryParse(cleanEmas, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out float guessEmas))
             {
                 emasValid = Mathf.Abs(guessEmas - correctEmasAmount) < 0.1f;
             }
-            else emasValid = false;
+            else 
+            {
+                emasValid = false;
+            }
         }
 
+        // --- 2. VALIDASI PERAK ---
         if (isPerakWajib && inputZakatPerak != null)
         {
-            string cleanPerak = inputZakatPerak.text.Replace(",", ".");
+            // SEKARANG SUDAH AMAN: Perak juga dibersihkan dari " gr" dan spasi
+            string cleanPerak = inputZakatPerak.text.Replace(" gr", "").Replace(" ", "").Replace(",", ".");
+            
             if (float.TryParse(cleanPerak, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out float guessPerak))
             {
                 perakValid = Mathf.Abs(guessPerak - correctPerakAmount) < 0.1f;
             }
-            else perakValid = false;
+            else 
+            {
+                perakValid = false;
+            }
         }
 
+        // --- 3. EKSEKUSI PEMBAYARAN JIKA KEDUANYA BENAR ---
         if (emasValid && perakValid)
         {
             if (audioSource && correctSound) audioSource.PlayOneShot(correctSound);
@@ -462,7 +475,7 @@ public class ZakatEmasPerakPanel : MonoBehaviour
             
             if (isEmasWajib && inputZakatEmas != null)
             {
-                string cleanEmas = inputZakatEmas.text.Replace(",", ".");
+                string cleanEmas = inputZakatEmas.text.Replace(" gr", "").Replace(" ", "").Replace(",", ".");
                 if (int.TryParse(cleanEmas, out int amountEmasToPay))
                     MoneyManager.instance.RemoveEmas(amountEmasToPay);
                 else
@@ -471,7 +484,7 @@ public class ZakatEmasPerakPanel : MonoBehaviour
 
             if (isPerakWajib && inputZakatPerak != null)
             {
-                string cleanPerak = inputZakatPerak.text.Replace(",", ".");
+                string cleanPerak = inputZakatPerak.text.Replace(" gr", "").Replace(" ", "").Replace(",", ".");
                 if (int.TryParse(cleanPerak, out int amountPerakToPay))
                     MoneyManager.instance.RemovePerak(amountPerakToPay);
                 else
@@ -485,6 +498,7 @@ public class ZakatEmasPerakPanel : MonoBehaviour
         else
         {
             if (audioSource && wrongSound) audioSource.PlayOneShot(wrongSound);
+            Debug.Log($"Jawaban Emas/Perak salah atau format tidak terbaca! Emas Valid: {emasValid}, Perak Valid: {perakValid}");
         }
     }
 
@@ -503,13 +517,28 @@ public class ZakatEmasPerakPanel : MonoBehaviour
             ZakatPanelManager.instance.UpdatePaymentButtonVisual();
         }
 
+        // --- KUNCI UTAMA SINKRONISASI HUD RUPIAH ---
+        if (UIManager.instance != null)
+        {
+            // Paksa tutup panel reward menggunakan UIManager agar openedPanelsCount berkurang murni menjadi 0
+            UIManager.instance.ClosePanelMenu(panelReward);
+            
+            // Pengaman ganda: Jika ada panel sisa yang menggantung, paksa reset ke 0 dan bangunkan HUD Gameplay
+            System.Type.GetType("UIManager").GetField("openedPanelsCount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(UIManager.instance, 0);
+            
+            GameObject gameplayHUDObj = (GameObject)System.Type.GetType("UIManager").GetField("gameplayHUD", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(UIManager.instance);
+            if (gameplayHUDObj != null) gameplayHUDObj.SetActive(true);
+        }
+        else
+        {
+            if (panelReward != null) panelReward.SetActive(false);
+        }
+
         if (Level3Manager.instance != null)
         {
             Level3Manager.instance.TutupRewardDanMasukLevel3();
         }
 
-        if (panelReward != null) panelReward.SetActive(false);
-        if (UIManager.instance != null) UIManager.instance.ClosePanelMenu(gameObject);
-        else gameObject.SetActive(false);
+        gameObject.SetActive(false);
     }
 }

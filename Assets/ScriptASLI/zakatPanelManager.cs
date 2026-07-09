@@ -110,6 +110,13 @@ public class ZakatPanelManager : MonoBehaviour
         UpdateNavButtons();
         UpdatePaymentButtonVisual(); 
         UpdateCheckmarkVisuals(); 
+
+        // =============== TAMBAHAN PENGAMAN KANTOR ZAKAT ===============
+        // Begitu panel zakat diakses, paksa matikan bar bantuan pergi ke kantor zakat di HUD Misi
+        if (TaskManager.instance != null && TaskManager.instance.barKeKantorZakat != null)
+        {
+            TaskManager.instance.barKeKantorZakat.SetActive(false);
+        }
     }
 
     public void CloseZakatPanel()

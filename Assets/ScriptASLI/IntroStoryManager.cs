@@ -48,6 +48,19 @@ public class IntroStoryManager : MonoBehaviour
     private Coroutine typewriterCoroutine;
     private bool sedangMengetIK = false;
     private bool introSelesai = false;
+
+    // --- TAMBAHKAN VARIABLE BARU INI DI BAGIAN SETTINGS / UTAMA ---
+    [Header("Audio Typewriter Settings")]
+    [Tooltip("Masukkan komponen AudioSource yang ada di GameObject ini")]
+    public AudioSource audioSourceDialog;
+    [Tooltip("Masukkan kumpulan suara pendek untuk variasi suara NPC")]
+    public AudioClip[] soundClips;
+    [Tooltip("Batas minimum acak pitch (misal 0.85f)")]
+    public float minPitch = 0.85f;
+    [Tooltip("Batas maksimum acak pitch (misal 1.15f)")]
+    public float maxPitch = 1.15f;
+    [Tooltip("Suara berbunyi setiap berapa karakter? (1 = setiap huruf, 2 = setiap 2 huruf biar tidak terlalu bising)")]
+    public int karakterPerBunyi = 2;
     
     private enum StoryState { Intro10_16, SelesaiTebang17, SelesaiJual18_19 }
     private StoryState currentState = StoryState.Intro10_16;
@@ -71,40 +84,34 @@ public class IntroStoryManager : MonoBehaviour
         if (btnNextGlobal != null) btnNextGlobal.onClick.AddListener(OnBtnNextClicked);
         if (btnXPanelLevel1 != null) btnXPanelLevel1.onClick.AddListener(TutupPanelLevel1);
 
-        // 🔥 FIX UTAMA 1: Paksa UIManager mereset hitungannya ke 0 murni agar HUD tidak terkunci mati
         if (UIManager.instance != null)
         {
             typeof(UIManager).GetField("openedPanelsCount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(UIManager.instance, 0);
         }
 
-        // 2. Matikan semua panel awal cerita secara bersih di awal frame
         MatikanSemuaPanelAwal();
 
-        // 🔥 FIX UTAMA 2: Cek apakah game dimulai dari awal murni (Fresh Player atau Hasil Klik Restart)
         if (PlayerPrefs.GetInt("IntroSelesai", 0) == 0)
         {
             currentState = StoryState.Intro10_16;
-            currentPanelIndex = 0; // Mulai wajib dari Panel Index ke-0 (Panel 10)
+            currentPanelIndex = 0; 
 
-            // Matikan HUD utama agar fokus menikmati sekuens intro
             ToggleHUD(false);
             
+            // FIX MIST: Langsung paksa aktif dan langsung set putih pekat di awal frame
             if (imgMistPutih != null)
             {
                 imgMistPutih.gameObject.SetActive(true);
                 imgMistPutih.color = new Color(1f, 1f, 1f, 1f);
             }
             
-            // Panggil fungsi untuk mulai menampilkan ketikan cerita panel 10 murni
             MulaiIntroCerita();
         }
         else
         {
-            // Jika meload save game biasa, kabut dimatikan dan HUD dinyalakan langsung
             if (imgMistPutih != null) imgMistPutih.gameObject.SetActive(false);
-            
-            if(btnNextGlobal != null) btnNextGlobal.gameObject.SetActive(false);
-            if(panelLevel1 != null) panelLevel1.SetActive(false);
+            if (btnNextGlobal != null) btnNextGlobal.gameObject.SetActive(false);
+            if (panelLevel1 != null) panelLevel1.SetActive(false);
             ToggleHUD(true);
         }
     }
@@ -221,28 +228,81 @@ public class IntroStoryManager : MonoBehaviour
         typewriterCoroutine = StartCoroutine(TypewriterAdvanced(txtPanel18, teksPanel18));
     }
 
-    IEnumerator TypewriterAdvanced(TextMeshProUGUI tmpText, string teksLengkap)
+   IEnumerator TypewriterAdvanced(TextMeshProUGUI tmpText, string teksLengkap)
     {
         if (tmpText == null) yield break;
         
         sedangMengetIK = true;
+
+        // --- PENGATURAN KATA/KARAKTER UTK LAKI-LAKI MUDA VS BAPAK TUA ---
+        float pitchMinKarakter = 0.85f;
+        float pitchMaxKarakter = 1.15f;
+
+        // Cek apakah panel saat ini adalah Panel 10, 12, atau 14 (Index 0, 2, 4)
+        // Catatan: introPanels[0] = Panel 10, introPanels[2] = Panel 12, dst.
+        if (currentState == StoryState.Intro10_16 && (currentPanelIndex == 0 || currentPanelIndex == 2 || currentPanelIndex == 4))
+        {
+            // Karakter: Laki-laki Muda (Suara normal - agak tinggi)
+            pitchMinKarakter = 0.95f;
+            pitchMaxKarakter = 1.20f;
+        }
+        else
+        {
+            // Karakter: Bapak-bapak Tua (Suara berat, rendah, dan temponya berwibawa)
+            pitchMinKarakter = 0.55f;
+            pitchMaxKarakter = 0.75f;
+        }
+
         for (int i = 0; i <= teksLengkap.Length; i++)
         {
             string teksTampil = teksLengkap.Substring(0, i);
             string teksSembunyi = teksLengkap.Substring(i);
             tmpText.text = teksTampil + "<color=#00000000>" + teksSembunyi + "</color>";
+
+            int sisaKarakter = teksLengkap.Length - i;
+
+            // Logika Suara
+            if (i > 0 && i < teksLengkap.Length && i % karakterPerBunyi == 0 && sisaKarakter > 3)
+            {
+                char karakterSekarang = teksLengkap[i - 1];
+
+                if (karakterSekarang != ' ' && audioSourceDialog != null && soundClips.Length > 0)
+                {
+                    int randomClipIndex = Random.Range(0, soundClips.Length);
+                    audioSourceDialog.clip = soundClips[randomClipIndex];
+                    
+                    // Gunakan rentang pitch yang sudah disesuaikan dengan karakter panel di atas
+                    audioSourceDialog.pitch = Random.Range(pitchMinKarakter, pitchMaxKarakter);
+                    
+                    audioSourceDialog.Play();
+                }
+            }
+            else if (sisaKarakter <= 3 && audioSourceDialog != null && audioSourceDialog.isPlaying)
+            {
+                audioSourceDialog.Stop();
+            }
+
             yield return new WaitForSeconds(kecepatanKetik);
         }
+
+        if (audioSourceDialog != null) audioSourceDialog.Stop();
+
         tmpText.text = teksLengkap;
         sedangMengetIK = false;
         
         if (btnNextGlobal != null) btnNextGlobal.gameObject.SetActive(true);
     }
 
-    void SkipKetikkan()
+   void SkipKetikkan()
     {
         if (typewriterCoroutine != null) StopCoroutine(typewriterCoroutine);
         sedangMengetIK = false;
+
+        // FIX AUDIO: Paksa audio berhenti total saat pemain melakukan klik/skip text
+        if (audioSourceDialog != null)
+        {
+            audioSourceDialog.Stop();
+        }
 
         if (currentState == StoryState.Intro10_16)
         {

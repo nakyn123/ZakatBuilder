@@ -107,27 +107,39 @@ public class ZakatCalculator : MonoBehaviour
             // --- SISTEM UPDATE INPUT FIELD OTOMATIS BERDASARKAN PANEL YANG AKTIF ---
             if (mainPanelScript != null && mainPanelScript.gameObject.activeInHierarchy)
             {
-                // Jika di panel perdagangan, arahkan ke input tunggal bawaan dagang
-                if (inputZakat != null) inputZakat.text = expression;
+                // JIKA DI PANEL PERDAGANGAN: Format ke Rupiah dengan titik ribuan
+                if (inputZakat != null) 
+                {
+                    if (double.TryParse(expression, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedValue))
+                    {
+                        inputZakat.text = "Rp " + parsedValue.ToString("N0", new CultureInfo("id-ID"));
+                    }
+                    else
+                    {
+                        inputZakat.text = expression;
+                    }
+                }
             }
             else if (emasPerakPanelScript != null && emasPerakPanelScript.gameObject.activeInHierarchy)
             {
-                // Jika di panel emas/perak, cek input mana yang sedang aktif atau kosong untuk diisi
+                // JIKA DI PANEL EMAS/PERAK: Ditambahkan akhiran " gr"
+                string formattedGram = expression + " gr";
+
                 if (emasPerakPanelScript.isEmasWajib && emasPerakPanelScript.isPerakWajib)
                 {
                     // Jika dua-duanya aktif, isi ke input field yang sedang kosong atau jadikan default ke Emas terlebih dahulu
                     if (string.IsNullOrEmpty(emasPerakPanelScript.inputZakatEmas.text))
-                        emasPerakPanelScript.inputZakatEmas.text = expression;
+                        emasPerakPanelScript.inputZakatEmas.text = formattedGram;
                     else
-                        emasPerakPanelScript.inputZakatPerak.text = expression;
+                        emasPerakPanelScript.inputZakatPerak.text = formattedGram;
                 }
                 else if (emasPerakPanelScript.isEmasWajib)
                 {
-                    emasPerakPanelScript.inputZakatEmas.text = expression;
+                    emasPerakPanelScript.inputZakatEmas.text = formattedGram;
                 }
                 else if (emasPerakPanelScript.isPerakWajib)
                 {
-                    emasPerakPanelScript.inputZakatPerak.text = expression;
+                    emasPerakPanelScript.inputZakatPerak.text = formattedGram;
                 }
             }
         } catch {
@@ -155,7 +167,8 @@ public class ZakatCalculator : MonoBehaviour
             float totalHarta = MoneyManager.instance.totalMoney;
             float correctAmount = totalHarta * 0.025f; 
 
-            string cleanInput = inputZakat.text.Replace(".", "");
+            // PERBAIKAN: Bersihkan simbol "Rp", spasi, dan titik "." agar bisa di-parse dengan aman
+            string cleanInput = inputZakat.text.Replace("Rp", "").Replace(" ", "").Replace(".", "");
 
             if (float.TryParse(cleanInput, out float userGuess))
             {
@@ -183,7 +196,7 @@ public class ZakatCalculator : MonoBehaviour
         {
             Debug.Log("[ZakatCalculator] Mengalihkan validasi langsung ke fungsi internal Emas Perak.");
             
-            // ✅ KODE AMAN: Panggil langsung fungsi internalnya, jangan pakai onClick.Invoke()!
+            // Panggil langsung fungsi internalnya
             emasPerakPanelScript.ValidateZakatEmasPerak();
         }
     }

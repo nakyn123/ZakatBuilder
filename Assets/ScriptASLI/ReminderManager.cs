@@ -1,21 +1,21 @@
 using System.Collections;
 using UnityEngine;
-using TMPro; // Pastikan menggunakan TextMeshPro untuk teksnya
+using TMPro;
 
 public class ReminderManager : MonoBehaviour
 {
     public static ReminderManager instance;
 
     [Header("UI Components")]
-    [SerializeField] private RectTransform kakekTransform; // Isi dengan Image (1) kakek
-    [SerializeField] private GameObject bubbleObject;       // Isi dengan GameObject bubble
-    [SerializeField] private TextMeshProUGUI textMessage;   // Isi dengan komponen teks di dalam bubble
+    [SerializeField] private RectTransform kakekTransform; 
+    [SerializeField] private GameObject bubbleObject;       
+    [SerializeField] private TextMeshProUGUI textMessage;   
 
     [Header("Animation Settings")]
     [SerializeField] private float speedKakek = 500f;
     [SerializeField] private float typewriterSpeed = 0.05f;
-    [SerializeField] private float durationVisible = 4f;    // Berapa lama pop-up diam muncul di layar
-    [SerializeField] private float loopReminderDelay = 10f; // Muncul lagi setiap 10 detik jika pakan belum diisi
+    [SerializeField] private float durationVisible = 4f;    
+    [SerializeField] private float loopReminderDelay = 10f; 
 
     private Vector2 kakekHiddenPos;
     private Vector2 kakekShownPos;
@@ -23,15 +23,10 @@ public class ReminderManager : MonoBehaviour
     private Coroutine activeReminderRoutine;
     private string pesanPakanHabis = "Pakan di peternakan sudah habis! Tolong diisi ulang.";
 
-    // 🔥 VARIABEL REVISI TUTORIAL BERANAK TERNAK FIRST TIME
+    // VARIABEL REVISI TUTORIAL BERANAK TERNAK
     private bool hasShownTutorialTernak = false;
     private string pesanTutorial1 = "Sapi dan kambing yang kamu beli ini bisa beranak loh.";
     private string pesanTutorial2 = "Maka dari itu rajinlah memberinya makan agar ia tumbuh sehat.";
-    // 🔥 TAMBAHAN BARU: Variabel kontrol untuk pengingat jual kayu
-    private bool hasShownJualKayuReminder = false;
-    private string pesanJualKayu = "Aset kayu kamu sudah banyak, jangan lupa dijual untuk menghasilkan uang ya!";
-
-    // ❌ Variabel konversi emas perak sudah dihapus dari sini
 
     private void Awake()
     {
@@ -41,19 +36,23 @@ public class ReminderManager : MonoBehaviour
 
     private void Start()
     {
-        // Tentukan posisi awal (Sembunyi di bawah layar) dan posisi akhir kakek
         kakekShownPos = kakekTransform.anchoredPosition;
         kakekHiddenPos = new Vector2(kakekShownPos.x, -kakekTransform.rect.height - 100f);
         
-        // Sembunyikan semuanya di awal game
         kakekTransform.anchoredPosition = kakekHiddenPos;
         bubbleObject.SetActive(false);
         textMessage.text = "";
     }
 
-    // Fungsi utama untuk memicu looping reminder dari script luar
+    // Fungsi pemicu looping reminder pakan habis
     public void TriggerPakanHabisReminder(bool status)
     {
+        // 🛑 LAYER PROTEKSI: Jika ternak sudah mencapai nisab / disuruh ke kantor zakat, BLOKIR reminder pakan
+        if (JurnalManager.instance != null && JurnalManager.instance.isTernakNisabReached)
+        {
+            status = false; 
+        }
+
         if (status)
         {
             if (!isReminderActive)
@@ -64,7 +63,6 @@ public class ReminderManager : MonoBehaviour
         }
         else
         {
-            // Jika pakan sudah diisi, matikan semua looping reminder dan sembunyikan UI
             isReminderActive = false;
             if (activeReminderRoutine != null) StopCoroutine(activeReminderRoutine);
             StartCoroutine(HideSequence());
@@ -75,19 +73,19 @@ public class ReminderManager : MonoBehaviour
     {
         while (isReminderActive)
         {
-            // Lapisan Pengaman: Tunggu sampai tidak ada panel UI apapun yang terbuka sebelum memicu peringatan pakan
+            // 🛑 CEK REAL-TIME: Jika tiba-tiba di tengah jalan nisab tercapai, langsung stop kakek keluar
+            if (JurnalManager.instance != null && JurnalManager.instance.isTernakNisabReached)
+            {
+                isReminderActive = false;
+                StartCoroutine(HideSequence());
+                yield break;
+            }
+
             while (IsAnyPanelOpen()) yield return null;
 
-            // 1. Jalankan sekuens animasi memunculkan reminder
             yield return StartCoroutine(ShowSequence());
-
-            // 2. Tunggu selama durasi tertentu sebelum menghilang otomatis
             yield return new WaitForSeconds(durationVisible);
-
-            // 3. Jalankan sekuens animasi menyembunyikan reminder
             yield return StartCoroutine(HideSequence());
-
-            // 4. Tunggu beberapa detik (delay loop) sebelum memunculkan peringatan lagi
             yield return new WaitForSeconds(loopReminderDelay);
         }
     }
@@ -97,24 +95,21 @@ public class ReminderManager : MonoBehaviour
         textMessage.text = "";
         bubbleObject.SetActive(false);
 
-        // Kakek Transisi Naik dari bawah ke atas
         while (Vector2.Distance(kakekTransform.anchoredPosition, kakekShownPos) > 0.1f)
         {
             kakekTransform.anchoredPosition = Vector2.MoveTowards(kakekTransform.anchoredPosition, kakekShownPos, speedKakek * Time.deltaTime);
             yield return null;
         }
+        // 🔥 FIX: Mengubah dari kShownPos menjadi kakekShownPos agar sesuai deklarasi
         kakekTransform.anchoredPosition = kakekShownPos;
 
-        // Bubble aktif/muncul
         bubbleObject.SetActive(true);
 
-        // 🔥 ANIMASI TIGA TITIK (...) MUNCUL BERURUTAN
         textMessage.text = "."; yield return new WaitForSeconds(0.4f);
         textMessage.text = ".."; yield return new WaitForSeconds(0.4f);
         textMessage.text = "..."; yield return new WaitForSeconds(0.5f);
         textMessage.text = ""; yield return new WaitForSeconds(0.2f);
 
-        // Efek ketik teks pesan satu persatu
         foreach (char letter in pesanPakanHabis.ToCharArray())
         {
             textMessage.text += letter;
@@ -124,11 +119,9 @@ public class ReminderManager : MonoBehaviour
 
     private IEnumerator HideSequence()
     {
-        // Bubble langsung menghilang / tidak aktif
         bubbleObject.SetActive(false);
         textMessage.text = "";
 
-        // Kakek turun ke bawah layar
         while (Vector2.Distance(kakekTransform.anchoredPosition, kakekHiddenPos) > 0.1f)
         {
             kakekTransform.anchoredPosition = Vector2.MoveTowards(kakekTransform.anchoredPosition, kakekHiddenPos, speedKakek * Time.deltaTime);
@@ -138,7 +131,7 @@ public class ReminderManager : MonoBehaviour
     }
 
     // ====================================================================
-    // 🔥 CORE SEKUENS TUTORIAL BERANAK (MUNCUL SETELAH PANEL TOKO TUTUP)
+    // 🔥 TUTORIAL BERANAK (DIPANGGIL SETELAH BELI TERNAK / TOKO TUTUP)
     // ====================================================================
     public void TriggerFirstPurchaseTutorial()
     {
@@ -149,18 +142,14 @@ public class ReminderManager : MonoBehaviour
         }
     }
 
-    private System.Collections.IEnumerator TutorialTernakSequence()
+    private IEnumerator TutorialTernakSequence()
     {
-        // 1. PENGAMAN: Tunggu sampai seluruh panel UI tertutup rapat
         while (IsAnyPanelOpen()) yield return null;
-
-        // 🔥 DIPERCEPAT: Kurangi jeda setelah panel tutup (langsung jalan tanpa delay lama)
         yield return new WaitForSeconds(0.2f); 
 
         textMessage.text = "";
         bubbleObject.SetActive(false);
 
-        // 2. Kakek Transisi Naik ke atas layar
         while (Vector2.Distance(kakekTransform.anchoredPosition, kakekShownPos) > 0.1f)
         {
             kakekTransform.anchoredPosition = Vector2.MoveTowards(kakekTransform.anchoredPosition, kakekShownPos, speedKakek * Time.deltaTime);
@@ -168,51 +157,37 @@ public class ReminderManager : MonoBehaviour
         }
         kakekTransform.anchoredPosition = kakekShownPos;
 
-        // ==========================================
-        // TEXT DIALOG 1 (Sapi & Kambing bisa beranak)
-        // ==========================================
         bubbleObject.SetActive(true);
 
-        // 🔥 ANIMASI TIGA TITIK (...) HANYA DI SINI (AWAL BANGET)
         textMessage.text = "."; yield return new WaitForSeconds(0.3f); 
         textMessage.text = ".."; yield return new WaitForSeconds(0.3f);
         textMessage.text = "..."; yield return new WaitForSeconds(0.4f); 
         textMessage.text = ""; yield return new WaitForSeconds(0.1f);
 
-        // Ketik Teks Pertama
         foreach (char letter in pesanTutorial1.ToCharArray())
         {
             textMessage.text += letter;
             yield return new WaitForSeconds(typewriterSpeed);
         }
 
-        // 🔥 DIPERCEPAT: Durasi teks pertama mejeng di layar dikurangi agar tidak kelamaan
         yield return new WaitForSeconds(durationVisible * 0.7f); 
 
-        // 4. TRANSISI TEKS BARU: Bubble hilang seketika & teks direset
         bubbleObject.SetActive(false);
         textMessage.text = "";
         yield return new WaitForSeconds(0.3f); 
 
-        // Cek pengaman darurat kembali
         while (IsAnyPanelOpen()) yield return null;
 
-        // ==========================================
-        // TEXT DIALOG 2 (Rajin memberi makan)
-        // ==========================================
         bubbleObject.SetActive(true);
 
-        // 🔥 PERBAIKAN: TITIK-TITIK DIHAPUS TOTAL DI SINI, langsung ngetik pesan kedua!
         foreach (char letter in pesanTutorial2.ToCharArray())
         {
             textMessage.text += letter;
             yield return new WaitForSeconds(typewriterSpeed);
         }
 
-        // Durasi teks kedua mejeng di layar sebelum kakek pulang
         yield return new WaitForSeconds(durationVisible);
 
-        // 6. Selesai, Bubble hilang dan kakek transisi turun sembunyi
         bubbleObject.SetActive(false);
         textMessage.text = "";
         while (Vector2.Distance(kakekTransform.anchoredPosition, kakekHiddenPos) > 0.1f)
@@ -223,13 +198,11 @@ public class ReminderManager : MonoBehaviour
         kakekTransform.anchoredPosition = kakekHiddenPos;
     }
 
-    // Fungsi pembantu mengecek status keaktifan seluruh master panel game kamu
     private bool IsAnyPanelOpen()
     {
         bool tokoBuka = false;
         if (TokoManager.instance != null)
         {
-            // Deteksi master panel utama toko menggunakan reflection karena tipenya private
             GameObject masterToko = (GameObject)System.Type.GetType("TokoManager")
                 .GetField("masterTokoPanelUtama", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                 .GetValue(TokoManager.instance);
@@ -244,58 +217,4 @@ public class ReminderManager : MonoBehaviour
 
         return tokoBuka || jurnalBuka || misiBuka || carouselZakatBuka;
     }
-
-    // 🔥 FUNGSI BARU: Dipanggil dari TaskManager saat tebang pohon menyentuh angka 15
-    public void TriggerJualKayuReminder()
-    {
-        if (!hasShownJualKayuReminder)
-        {
-            hasShownJualKayuReminder = true;
-            StartCoroutine(JualKayuReminderSequence());
-        }
-    }
-
-    private IEnumerator JualKayuReminderSequence()
-    {
-        // Tunggu sampai tidak ada panel UI apapun yang sedang terbuka di layar
-        while (IsAnyPanelOpen()) yield return null;
-
-        yield return new WaitForSeconds(0.5f); // Jeda sejenak biar natural
-
-        textMessage.text = "";
-        bubbleObject.SetActive(false);
-
-        // Kakek bergerak naik ke atas layar
-        while (Vector2.Distance(kakekTransform.anchoredPosition, kakekShownPos) > 0.1f)
-        {
-            kakekTransform.anchoredPosition = Vector2.MoveTowards(kakekTransform.anchoredPosition, kakekShownPos, speedKakek * Time.deltaTime);
-            yield return null;
-        }
-        kakekTransform.anchoredPosition = kakekShownPos;
-
-        // Munculkan bubble percakapan
-        bubbleObject.SetActive(true);
-
-        // Efek ketik teks pesan satu persatu
-        foreach (char letter in pesanJualKayu.ToCharArray())
-        {
-            textMessage.text += letter;
-            yield return new WaitForSeconds(typewriterSpeed);
-        }
-
-        // Tunggu selama durasi tertentu agar pemain sempat membaca
-        yield return new WaitForSeconds(durationVisible);
-
-        // Bubble hilang dan kakek turun kembali sembunyi
-        bubbleObject.SetActive(false);
-        textMessage.text = "";
-        while (Vector2.Distance(kakekTransform.anchoredPosition, kakekHiddenPos) > 0.1f)
-        {
-            kakekTransform.anchoredPosition = Vector2.MoveTowards(kakekTransform.anchoredPosition, kakekHiddenPos, speedKakek * Time.deltaTime);
-            yield return null;
-        }
-        kakekTransform.anchoredPosition = kakekHiddenPos;
-    }
-
-    // ❌ Fungsi TriggerKonversiAsetReminder dan KonversiAsetReminderSequence sudah dihapus permanen dari sini
 }

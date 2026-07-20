@@ -200,6 +200,13 @@ public class TaskManager : MonoBehaviour {
     {
         yield return new WaitForEndOfFrame();
 
+        // 🛑 PROTEKSI: Jika state mendeteksi ending, matikan paksa alur notifikasi start awal game
+        if (isGameEnding)
+        {
+            if (ikonNotifikasi != null) ikonNotifikasi.SetActive(false);
+            yield break;
+        }
+
         if (PlayerPrefs.GetInt("IsRestarted", 0) == 1)
         {
             ResetSeluruhProgressMisi();
@@ -470,6 +477,9 @@ public class TaskManager : MonoBehaviour {
     }
 
     public void OpenMisi() {
+        // 🛑 KUNCI GERBANG UTAMA: Jika game sudah ending, BLOKIR total akses membuka panel misi!
+        if (isGameEnding) return;
+
         if (InventoryManager.instance != null && InventoryManager.instance.audioSourceInventory != null && suaraBukaMisi != null) {
             InventoryManager.instance.audioSourceInventory.PlayOneShot(suaraBukaMisi);
         }
@@ -570,12 +580,6 @@ public class TaskManager : MonoBehaviour {
 
         int progressMisiSekarang = totalCount - woodOffset; 
         if (progressMisiSekarang < 0) progressMisiSekarang = 0;
-
-        if (progressMisiSekarang >= 15) {
-            if (ReminderManager.instance != null) {
-                ReminderManager.instance.TriggerJualKayuReminder(); 
-            }
-        }
 
         if (barTebangPohon != null && barTebangPohon.activeSelf) {
             if (sliderTebang != null) {
@@ -853,7 +857,7 @@ public class TaskManager : MonoBehaviour {
         if (barTebangPohon != null) barTebangPohon.SetActive(false);
         if (barEdaranKades != null) barEdaranKades.SetActive(false);
         if (barTambangLogam != null) barTambangLogam.SetActive(false);
-        if (barKeKantorZakat != null) barKeKantorZakat.SetActive(false); // 🌟 TAMBAHKAN BARIS INI
+        if (barKeKantorZakat != null) barKeKantorZakat.SetActive(false);
 
         // 1. Aktifkan Bar Navigasi "Pergi Ke Toko"
         if (barKeToko != null) {
@@ -890,6 +894,14 @@ public class TaskManager : MonoBehaviour {
 
         if (ikonNotifikasi != null && !misiPanel.activeSelf) {
             ikonNotifikasi.SetActive(true);
+        }
+
+        // =================================================================
+        // 🔥 REVISI LEVEL 3: HANYA NYALAKAN ZONA MERAH TOKO SECARA OTOMATIS
+        // =================================================================
+        // Skrip ini langsung mengaktifkan tabung/cube area merah di map tanpa memicu panah HUD
+        if (lokasiTokoCube != null) {
+            lokasiTokoCube.gameObject.SetActive(true);
         }
     }
 
@@ -1088,6 +1100,9 @@ public class TaskManager : MonoBehaviour {
     }
 
     public void CekPemicuZakatTernak() {
+        // 🛑 KUNCI RE-TRIGGER: Jangan biarkan bar kantor zakat / notif nyala lagi kalau game sudah ending!
+        if (isGameEnding) return;
+
         if (isIsiPakanDone && JurnalManager.instance != null && JurnalManager.instance.IsPeternakanUnlocked()) {
             if (barKeKantorZakat != null && !barKeKantorZakat.activeSelf) {
                 barKeKantorZakat.SetActive(true);

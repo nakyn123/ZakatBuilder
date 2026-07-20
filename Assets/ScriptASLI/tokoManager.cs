@@ -40,6 +40,9 @@ public class TokoManager : MonoBehaviour
     [Header("Audio Typewriter Settings")]
     [Tooltip("Suara berbunyi setiap berapa karakter? (Rekomendasi: 3 atau 4 karena kecepatan ketikmu 0.02 sangat cepat)")]
     public int karakterPerBunyiToko = 3;
+    [Header("Audio Tambahan Dialog")]
+    [Tooltip("Masukkan clip suara ketik teks khusus toko (bisa disamakan dengan intro/edaran)")]
+    public AudioClip suaraKetikDialogToko;
 
     [Header("UI Toko Multi-Panel References")]
     public GameObject mainTokoPanel;        // toko-panel-asli
@@ -304,7 +307,6 @@ public class TokoManager : MonoBehaviour
 
     IEnumerator KetikTeksDialog(TextMeshProUGUI targetText, string teksPenuh)
     {
-        // 🛠️ PERBAIKAN: Mengubah magnetssedangMengetIK menjadi magnetssedangMengetik
         magnetssedangMengetik = true;
         targetText.text = "";
 
@@ -318,7 +320,6 @@ public class TokoManager : MonoBehaviour
         {
             targetText.text += hurufArray[i];
 
-            // Hitung sisa huruf yang belum diketik menuju akhir teks
             int sisaKarakter = hurufArray.Length - (i + 1);
 
             // Logika Suara: Bunyi di kelipatan karakterPerBunyiToko, BUKAN spasi, dan sisa karakter > 3
@@ -326,21 +327,27 @@ public class TokoManager : MonoBehaviour
             {
                 char karakterSekarang = hurufArray[i];
 
-                // Abaikan spasi / white space
-                if (karakterSekarang != ' ' && audioSourceToko != null && suaraUangBeli != null)
+                if (karakterSekarang != ' ' && audioSourceToko != null)
                 {
-                    audioSourceToko.clip = suaraUangBeli;
-                    // Terapkan pitch acak laki-laki muda
-                    audioSourceToko.pitch = Random.Range(pitchMinMuda, pitchMaxMuda);
+                    // Gunakan clip suara ketik khusus jika ada, jika tidak ada fallback ke suaraUangBeli
+                    AudioClip clipTerpilih = (suaraKetikDialogToko != null) ? suaraKetikDialogToko : suaraUangBeli;
                     
-                    // --- TRIK KHUSUS VOLUME DIALOG TOKO ---
-                    float volumeAsliObjek = audioSourceToko.volume;
-                    audioSourceToko.volume = 0.7f;
-                    audioSourceToko.Play();
-                    audioSourceToko.volume = volumeAsliObjek;
+                    if (clipTerpilih != null)
+                    {
+                        audioSourceToko.clip = clipTerpilih;
+                        audioSourceToko.pitch = Random.Range(pitchMinMuda, pitchMaxMuda);
+                        
+                        // =====================================================================
+                        // 🔒 KUNCI VOLUME KHUSUS DIALOG TOKO (0.7)
+                        // =====================================================================
+                        float volumeAsliSistem = audioSourceToko.volume; // Simpan volume bawaan inspector (misal volume beli barang)
+                        audioSourceToko.volume = 0.7f;                  // Paksa volume ketikan teks jadi 0.7
+                        audioSourceToko.Play();
+                        audioSourceToko.volume = volumeAsliSistem;       // Kembalikan langsung ke volume asli setelah Play dipicu
+                        // =====================================================================
+                    }
                 }
             }
-            // Hentikan paksa audio lebih awal jika sudah mendekati akhir kalimat
             else if (sisaKarakter <= 3 && audioSourceToko != null && audioSourceToko.isPlaying)
             {
                 audioSourceToko.Stop();
@@ -349,10 +356,8 @@ public class TokoManager : MonoBehaviour
             yield return new WaitForSeconds(kecepatanKetik);
         }
 
-        // Pastikan audio mati total saat huruf selesai diketik secara natural
         if (audioSourceToko != null) audioSourceToko.Stop();
 
-        // 🛠️ PERBAIKAN: Mengubah magnetssedangMengetIK menjadi magnetssedangMengetik
         magnetssedangMengetik = false;
         
         if (btnNextDialogTunggal != null) 

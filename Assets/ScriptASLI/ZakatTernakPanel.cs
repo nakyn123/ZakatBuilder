@@ -578,6 +578,10 @@ public class ZakatTernakPanel : MonoBehaviour
             ZakatPanelManager.instance.UpdatePaymentButtonVisual();
             ZakatPanelManager.instance.CloseZakatPanel();
         }
+        if (JurnalManager.instance != null)
+        {
+            JurnalManager.instance.UpdateJurnalCompleteVisuals();
+        }
 
         if (Level3Manager.instance != null)
         {
@@ -586,14 +590,11 @@ public class ZakatTernakPanel : MonoBehaviour
         }
 
         // =====================================================================
-        // 🔥 EKSEKUSI PENGUNCIAN ABSOLUT NOTIFIKASI
+        // 🔥 EKSEKUSI PENGUNCIAN ABSOLUT NOTIFIKASI & CLEARING TASK
         // =====================================================================
         if (TaskManager.instance != null)
         {
-            // Panggil fungsi master kuncian bersih yang baru saja kita buat tadi
             TaskManager.instance.SetGameEndingBersih();
-            
-            // Simpan progress permainan dalam kondisi terkunci aman
             TaskManager.instance.SimpanProgressGameKeKomputer();
         }
         // =====================================================================

@@ -361,6 +361,9 @@ public class ZakatPerdaganganPanel : MonoBehaviour
         
         ZakatPanelManager panelManager = FindFirstObjectByType<ZakatPanelManager>();
         if (panelManager != null) { panelManager.isPerdaganganUnlocked = true; panelManager.UpdatePaymentButton(); panelManager.UpdateItemVisuals(); }
+        if (JurnalManager.instance != null) {
+            JurnalManager.instance.UpdateJurnalCompleteVisuals();
+        }
         if (TaskManager.instance != null) {
             TaskManager.instance.NotifyZakatPaid();
         }

@@ -516,6 +516,10 @@ public class ZakatEmasPerakPanel : MonoBehaviour
             ZakatPanelManager.instance.UpdateCheckmarkVisuals();
             ZakatPanelManager.instance.UpdatePaymentButtonVisual();
         }
+        if (JurnalManager.instance != null)
+        {
+            JurnalManager.instance.UpdateJurnalCompleteVisuals();
+        }
 
         // --- KUNCI UTAMA SINKRONISASI HUD RUPIAH ---
         if (UIManager.instance != null)

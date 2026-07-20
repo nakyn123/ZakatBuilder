@@ -90,6 +90,11 @@ public class JurnalManager : MonoBehaviour
     public bool isTernakLockedInJurnal = false;
     public bool isEmasLockedInJurnal = false;
 
+    [Header("UI Level Complete Images")]
+    public GameObject imgCompleteDagang;
+    public GameObject imgCompleteEmasPerak;
+    public GameObject imgCompleteTernak;
+
     private int lockedDagangValue = 0;
     private int lockedSapiValue = 0;
     private int lockedKambingValue = 0;
@@ -182,6 +187,7 @@ public class JurnalManager : MonoBehaviour
         UpdateStatusUI();
         UpdateEmasPerakStatusUI();
         UpdateTernakStatusUI();
+        UpdateJurnalCompleteVisuals();
 
         btnClose.onClick.AddListener(CloseJurnal);
         btnNext.onClick.AddListener(NextPage);
@@ -818,5 +824,21 @@ public void CloseJurnal()
         isSistemSapiBeranakAktif = false;
         isSistemKambingBeranakAktif = false;
         Debug.Log("<color=red>[Jurnal Ternak]</color> Coroutine beranak dihentikan secara permanen.");
+    }
+
+    // Putar posisinya atau letakkan di paling bawah kelas JurnalManager Anda
+    public void UpdateJurnalCompleteVisuals()
+    {
+        if (ZakatPanelManager.instance == null) return;
+
+        // Ambil status riil dari ZakatPanelManager lalu hidupkan/matikan objeknya
+        if (imgCompleteDagang != null) 
+            imgCompleteDagang.SetActive(ZakatPanelManager.instance.isPerdaganganCompleted);
+
+        if (imgCompleteEmasPerak != null) 
+            imgCompleteEmasPerak.SetActive(ZakatPanelManager.instance.isEmasPerakCompleted);
+
+        if (imgCompleteTernak != null) 
+            imgCompleteTernak.SetActive(ZakatPanelManager.instance.isPeternakanCompleted);
     }
 }

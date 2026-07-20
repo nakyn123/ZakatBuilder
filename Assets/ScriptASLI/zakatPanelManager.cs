@@ -95,8 +95,14 @@ public class ZakatPanelManager : MonoBehaviour
     public void OpenZakatPanel()
     {
         Debug.Log("[ZakatPanel] Membuka panel zakat.");
-        if (UIManager.instance != null) UIManager.instance.OpenPanelMenu(zakatCarouselPanel);
-        else zakatCarouselPanel.SetActive(true);
+        
+        // PENGAMAN: Aktifkan objeknya secara langsung terlebih dahulu sebelum lewat UIManager
+        zakatCarouselPanel.SetActive(true); 
+
+        if (UIManager.instance != null) 
+        {
+            UIManager.instance.OpenPanelMenu(zakatCarouselPanel);
+        }
 
         if (asetBlur != null) asetBlur.SetActive(true);
 
@@ -111,8 +117,6 @@ public class ZakatPanelManager : MonoBehaviour
         UpdatePaymentButtonVisual(); 
         UpdateCheckmarkVisuals(); 
 
-        // =============== TAMBAHAN PENGAMAN KANTOR ZAKAT ===============
-        // Begitu panel zakat diakses, paksa matikan bar bantuan pergi ke kantor zakat di HUD Misi
         if (TaskManager.instance != null && TaskManager.instance.barKeKantorZakat != null)
         {
             TaskManager.instance.barKeKantorZakat.SetActive(false);

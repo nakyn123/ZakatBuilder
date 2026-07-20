@@ -89,6 +89,7 @@ public class Level2Manager : MonoBehaviour
             if (JurnalManager.instance.visualHalamanUnlock != null) JurnalManager.instance.visualHalamanUnlock.SetActive(true);
             if (JurnalManager.instance.navCoinLeftPanel != null) JurnalManager.instance.navCoinLeftPanel.SetActive(true);
             JurnalManager.instance.CheckEmasPerakNisab();
+            JurnalManager.instance.UpdateJurnalCompleteVisuals();
         }
 
         if (TaskManager.instance != null)

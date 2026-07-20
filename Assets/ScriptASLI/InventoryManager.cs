@@ -307,7 +307,7 @@ public class InventoryManager : MonoBehaviour {
         PlayerPrefs.Save();
 
         if (IntroStoryManager.instance != null) {
-            IntroStoryManager.instance.TriggerPanel18_19SelesaiJual();
+            IntroStoryManager.instance.TriggerPanel18SelesaiJual();
         }
     }
     }
